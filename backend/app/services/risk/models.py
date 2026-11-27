@@ -52,6 +52,15 @@ class MissingFactor(_Model):
     reason: str
 
 
+class AltitudeRisk(_Model):
+    """Trip-level altitude risk, reported separately from the hourly forecast."""
+
+    elevation_m: float | None
+    sub_score: float | None  # 0..1, None if elevation unavailable
+    applied: bool  # True only in travel context (then included in the overall score)
+    note: str
+
+
 class DataSource(_Model):
     source: SourceKind
     fetched_at: AwareDatetime
@@ -69,6 +78,7 @@ class RiskAssessment(_Model):
     inputs: dict[str, float | str | None]  # values actually used
     missing_factors: list[MissingFactor]
     not_applied: list[MissingFactor]  # e.g. altitude in home context
+    altitude: AltitudeRisk | None = None  # trip-level; never part of hourly scores
     age_modifier: float
     sensitivity: float
     condition_multipliers: dict[FactorName, float]

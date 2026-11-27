@@ -20,6 +20,7 @@ from app.services.environment.models import (
 from app.services.risk import factors as fx
 from app.services.risk import risk_config as cfg
 from app.services.risk.models import (
+    AltitudeRisk,
     Context,
     DataSource,
     FactorResult,
@@ -108,7 +109,9 @@ def _pm_values(snapshot: EnvironmentSnapshot, at: datetime, mode: AqiMode) -> tu
     return point.pm2_5, point.pm10, "hourly_indicative"
 
 
-def _point_inputs(snapshot: EnvironmentSnapshot, at: datetime, mode: AqiMode, context: Context) -> _Point:
+def _point_inputs(
+    snapshot: EnvironmentSnapshot, at: datetime, mode: AqiMode, context: Context, include_altitude: bool = True
+) -> _Point:
     pt = _Point()
 
     # ---- air quality ----
@@ -172,7 +175,11 @@ def _point_inputs(snapshot: EnvironmentSnapshot, at: datetime, mode: AqiMode, co
             pt.values["temperature_swing"] = round(swing, 1)
             pt.inputs["temperature_swing_c"] = round(swing, 1)
 
-    # ---- altitude (travel context only) ----
+    # ---- altitude (travel context only; trip-level, so never in hourly scores) ----
+    if not include_altitude:
+        if snapshot.elevation_m is not None:
+            pt.inputs["elevation_m"] = snapshot.elevation_m
+        return pt
     if snapshot.elevation_m is None:
         if context == "travel":
             reason = _failure_reason(snapshot, "open-meteo-elevation", "elevation missing")
@@ -225,6 +232,17 @@ def _score(member: MemberProfile, point: _Point) -> _Scored:
     return _Scored(score, fx.level_for(score), results, contributions, top, multipliers, unknown, age_mod)
 
 
+def _altitude_risk(snapshot: EnvironmentSnapshot, context: Context) -> AltitudeRisk:
+    if snapshot.elevation_m is None:
+        return AltitudeRisk(elevation_m=None, sub_score=None, applied=False, note="elevation unavailable")
+    sub = round(fx.altitude_subscore(snapshot.elevation_m), 4)
+    if context == "travel":
+        note = "included in the overall score; trip-level risk, not part of hourly scores or safe windows"
+    else:
+        note = "not applied in home context (residents are acclimatised)"
+    return AltitudeRisk(elevation_m=snapshot.elevation_m, sub_score=sub, applied=context == "travel", note=note)
+
+
 def _data_sources(snapshot: EnvironmentSnapshot) -> tuple[dict[str, DataSource], list[str], list[str]]:
     sources = {p: DataSource(source=s.source, fetched_at=s.fetched_at) for p, s in snapshot.sources.items()}
     stale = sorted(p for p, s in snapshot.sources.items() if s.source == "stale")
@@ -260,6 +278,7 @@ def assess(
         inputs=point.inputs,
         missing_factors=point.missing,
         not_applied=point.not_applied,
+        altitude=_altitude_risk(snapshot, context),
         age_modifier=scored.age_mod,
         sensitivity=profile.sensitivity,
         condition_multipliers={f: m for f, m in scored.multipliers.items() if m != 1.0},
@@ -276,7 +295,9 @@ def assess(
 
 
 def _hourly_risk(profile: MemberProfile, snapshot: EnvironmentSnapshot, hour: datetime, context: Context) -> HourlyRisk:
-    point = _point_inputs(snapshot, hour, mode="hourly", context=context)
+    # Altitude is a trip-level risk: hourly scores, safe windows and routines reflect
+    # only weather and air quality (altitude is reported separately by assess()).
+    point = _point_inputs(snapshot, hour, mode="hourly", context=context, include_altitude=False)
     scored = _score(profile, point)
     return HourlyRisk(
         time=hour,

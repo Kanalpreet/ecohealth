@@ -94,6 +94,10 @@ def print_member(member: MemberProfile, routines: list[RoutineInput], snapshot: 
     print(f"  {member.name} ({member.age}, {conditions}): {result.score}/100 {result.level.upper()}  <- {tops}")
     if result.missing_factors:
         print(f"      missing: {', '.join(f'{m.factor} ({m.reason})' for m in result.missing_factors)}")
+    if result.altitude is not None and result.altitude.applied:
+        alt = result.altitude
+        print(f"      altitude (trip-level, not in hourly/safe windows): {alt.elevation_m:.0f} m, "
+              f"sub-score {alt.sub_score:.2f}")
 
     hourly = hourly_assessment(member, snapshot, hours=24, context=context)
     windows = safe_windows(hourly, TIMEZONE)
@@ -120,7 +124,7 @@ async def main() -> None:
         ("Delhi - live data", live["delhi"], "home"),
         ("Delhi - winter smog (saved, synthetic)", load_fixture("delhi_winter_smog"), "home"),
         ("Delhi - summer heatwave (saved, synthetic)", load_fixture("delhi_summer_heatwave"), "home"),
-        ("Leh - live data (trip: travel context, altitude applied)", live["leh"], "travel"),
+        ("Leh - live data (trip: travel context; altitude in overall score only)", live["leh"], "travel"),
     ]
     print(f"EcoHealth Climate Health Risk Engine v{ENGINE_VERSION} (deterministic, no LLM)")
     print("Risk-awareness prototype, not a diagnostic tool. Thresholds pending medical review.\n")

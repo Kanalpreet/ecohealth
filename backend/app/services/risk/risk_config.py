@@ -9,7 +9,8 @@ Change ENGINE_VERSION whenever any value or formula changes.
 
 from typing import Final, Literal
 
-ENGINE_VERSION: Final = "1.0.0"
+# 1.1.0: altitude is a trip-level risk, excluded from hourly scores / safe windows / routines.
+ENGINE_VERSION: Final = "1.1.0"
 
 Breakpoints = tuple[tuple[float, float], ...]  # (input value, output value), ascending inputs
 

@@ -1,4 +1,4 @@
-# Climate Health Risk Engine (v1.0.0)
+# Climate Health Risk Engine (v1.1.0)
 
 Code: `backend/app/services/risk/` (all numbers in `risk_config.py`).
 Deterministic Python only: **no LLM is involved in calculating any score.**
@@ -165,6 +165,13 @@ Low 0–2, Moderate 3–5, High 6–7, Very high 8–10, Extreme 11+.
 
 ### 3.6 Altitude (Travel Mode)
 
+**Trip-level risk.** Altitude is included in the overall score of `assess()` only
+when `context="travel"`, and is **never** part of `hourly_assessment()`, safe
+windows or routine checks: those reflect only weather and air quality, which
+change hour by hour (altitude does not). Every assessment reports it separately in
+`altitude` (`elevation_m`, `sub_score`, `applied`, `note`), also in home context
+(then `applied=false`).
+
 Applied only when `context="travel"` (people living at altitude are acclimatised;
 Travel Mode itself is built later). Sources: Luks A.M. et al., *Wilderness Medical
 Society Clinical Practice Guidelines for the Prevention and Treatment of Acute
@@ -249,7 +256,8 @@ reason, the **data sources** per provider (`live` / `cache` / `stale` and
 
 ## 7. Forecast, safe windows and routines
 
-- `hourly_assessment(member, snapshot, hours=48)`: a score per forecast hour,
+- `hourly_assessment(member, snapshot, hours=48)`: a score per forecast hour
+  from **weather and air quality only** (altitude excluded, see 3.6),
   starting with the next full hour (indicative hourly AQI, see 3.1).
 - `safe_windows(hourly, timezone, below="High", hours=24)`: contiguous time ranges
   whose level is **below** the threshold (default: Low or Moderate), with start and
@@ -262,6 +270,9 @@ reason, the **data sources** per provider (`live` / `cache` / `stale` and
   `no_forecast`. Routines have no duration yet, so only the start hour is scored.
 
 ## 8. Versioning
+
+History: **1.0.0** first version; **1.1.0** altitude excluded from hourly scores,
+safe windows and routines (reported separately).
 
 `ENGINE_VERSION` in `risk_config.py` follows semantic versioning: any change to a
 threshold, weight or formula changes the version, and every assessment records the

@@ -79,6 +79,26 @@ def test_papa_is_flagged_at_leh_altitude(results):
     assert results["leh_recorded"]["Papa"].score > results["leh_recorded"]["Healthy adult"].score
 
 
+def test_altitude_is_trip_level_not_part_of_hourly_scores():
+    snap = load_scenario("leh_recorded")
+    travel_hourly = hourly_assessment(PAPA, snap, hours=24, context="travel")
+    home_hourly = hourly_assessment(PAPA, snap, hours=24, context="home")
+    assert [h.score for h in travel_hourly] == [h.score for h in home_hourly]
+    assert all("altitude" not in h.top_factors for h in travel_hourly)
+
+    travel = assess(PAPA, snap, context="travel")
+    assert travel.altitude.applied is True and travel.altitude.elevation_m == travel.inputs["elevation_m"]
+    altitude_factor = next(f for f in travel.factors if f.factor == "altitude")
+    assert travel.altitude.sub_score == pytest.approx(altitude_factor.sub_score)
+    assert "not part of hourly scores" in travel.altitude.note
+
+
+def test_altitude_reported_but_not_applied_at_home():
+    home = assess(PAPA, load_scenario("leh_recorded"))
+    assert home.altitude.applied is False and home.altitude.sub_score > 0
+    assert "altitude" not in home.contributions
+
+
 def test_leh_without_travel_context_does_not_apply_altitude():
     snap = load_scenario("leh_recorded")
     home, travel = assess(PAPA, snap), assess(PAPA, snap, context="travel")

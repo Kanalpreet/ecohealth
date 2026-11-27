@@ -2,6 +2,7 @@
 
 from app.services.risk.engine import assess, check_routines, hourly_assessment, next_occurrence, safe_windows
 from app.services.risk.models import (
+    AltitudeRisk,
     FactorResult,
     HourlyRisk,
     MemberProfile,
@@ -14,6 +15,7 @@ from app.services.risk.models import (
 from app.services.risk.risk_config import ENGINE_VERSION
 
 __all__ = [
+    "AltitudeRisk",
     "ENGINE_VERSION",
     "FactorResult",
     "HourlyRisk",
