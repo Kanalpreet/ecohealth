@@ -1,31 +1,54 @@
 import { createBrowserRouter } from 'react-router'
 import { AppLayout } from '../components/layout/AppLayout'
+import { PublicLayout } from '../components/public/PublicLayout'
+import { PageSpinner } from '../components/ui/Spinner'
 import { ProtectedRoute, PublicOnlyRoute } from './guards'
-import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { RegisterPage } from '../pages/RegisterPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { RouteErrorPage } from '../pages/RouteErrorPage'
+import { RootLayout } from './RootLayout'
+
+// Public marketing pages are lazy-loaded: their code (and GSAP/Lottie, which the
+// Home page imports dynamically) never ships in the app's main bundle.
+const lazyPage = (load, name) => async () => ({ Component: (await load())[name] })
 
 export const router = createBrowserRouter([
   {
-    element: <AppLayout />,
+    element: <RootLayout />,
     errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <PageSpinner />,
     children: [
-      { index: true, element: <HomePage /> },
       {
-        element: <PublicOnlyRoute />,
+        element: <PublicLayout />,
         children: [
-          { path: 'login', element: <LoginPage /> },
-          { path: 'register', element: <RegisterPage /> },
+          { index: true, lazy: lazyPage(() => import('../pages/HomePage'), 'HomePage') },
+          { path: 'features', lazy: lazyPage(() => import('../pages/public/FeaturesPage'), 'FeaturesPage') },
+          { path: 'how-it-works', lazy: lazyPage(() => import('../pages/public/HowItWorksPage'), 'HowItWorksPage') },
+          { path: 'for-families', lazy: lazyPage(() => import('../pages/public/ForFamiliesPage'), 'ForFamiliesPage') },
+          { path: 'about', lazy: lazyPage(() => import('../pages/public/AboutPage'), 'AboutPage') },
+          { path: 'privacy', lazy: lazyPage(() => import('../pages/public/PrivacyPage'), 'PrivacyPage') },
+          { path: 'contact', lazy: lazyPage(() => import('../pages/public/ContactPage'), 'ContactPage') },
+          {
+            element: <PublicOnlyRoute />,
+            children: [
+              { path: 'login', element: <LoginPage /> },
+              { path: 'register', element: <RegisterPage /> },
+            ],
+          },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
       {
-        element: <ProtectedRoute />,
-        children: [{ path: 'dashboard', element: <DashboardPage /> }],
+        element: <AppLayout />,
+        children: [
+          {
+            element: <ProtectedRoute />,
+            children: [{ path: 'dashboard', element: <DashboardPage /> }],
+          },
+        ],
       },
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

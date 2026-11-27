@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { motion } from 'motion/react'
-import { LayoutDashboard, Leaf, LogIn, LogOut, Menu, UserPlus, X } from 'lucide-react'
+import { LayoutDashboard, LogIn, LogOut, Menu, UserPlus, X } from 'lucide-react'
+import { LogoMark } from '../public/Logo'
 import { useAuth } from '../../hooks/useAuth'
 import { useMotionSafe } from '../../hooks/useMotionSafe'
 import { cn } from '../../lib/cn'
@@ -73,9 +74,7 @@ export function AppLayout() {
       <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
         <div className="mx-auto flex h-16 max-w-content items-center justify-between gap-3 px-gutter sm:px-6">
           <Link to={authed ? '/dashboard' : '/'} className="flex min-h-11 items-center gap-2 rounded-control font-bold text-ink">
-            <span className="flex size-8 items-center justify-center rounded-control bg-brand text-white">
-              <Leaf aria-hidden="true" size={18} />
-            </span>
+            <LogoMark />
             <span className="text-lg">EcoHealth</span>
           </Link>
 
