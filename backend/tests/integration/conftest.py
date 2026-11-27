@@ -19,7 +19,10 @@ from app.core.config import ConfigurationError, get_settings
 from app.core.database import create_db_engine
 
 TEST_EMAIL_PREFIX = "it-"
-REQUIRED_TABLES = ("users", "family_members", "routines")
+REQUIRED_TABLES = ("users", "family_members", "routines", "env_cache")
+# Cache tests only use cells near the South Pole, so they can never collide with
+# real cached cells, and leftovers are easy to detect.
+TEST_CACHE_MAX_LAT = -89.0
 
 
 def unique_email() -> str:
@@ -57,8 +60,12 @@ def db_engine():
             text("SELECT count(*) FROM public.users WHERE email LIKE :pattern"),
             {"pattern": f"{TEST_EMAIL_PREFIX}%@example.com"},
         ).scalar_one()
+        cache_leftovers = connection.execute(
+            text("SELECT count(*) FROM public.env_cache WHERE cell_lat <= :lat"), {"lat": TEST_CACHE_MAX_LAT}
+        ).scalar_one()
     engine.dispose()
     assert leftovers == 0, f"{leftovers} integration-test users were left in the database"
+    assert cache_leftovers == 0, f"{cache_leftovers} integration-test cache rows were left in the database"
 
 
 @pytest.fixture
@@ -77,3 +84,80 @@ def db_session(db_engine):
         session.close()
         outer.rollback()
         connection.close()
+
+
+# ---------------------------------------------------------------------------
+# API test client (Go 5): real app + real Supabase session (rolled back),
+# fresh login rate limiter, recorded environment snapshot (no live provider calls).
+# ---------------------------------------------------------------------------
+
+STRONG_PASSWORD = "correct-horse-battery-staple"
+
+
+class FakeEnvironment:
+    """Stands in for CachedEnvironmentService: returns a recorded snapshot."""
+
+    def __init__(self, snapshot) -> None:
+        self.snapshot = snapshot
+        self.calls: list[tuple[float, float]] = []
+
+    async def get_snapshot(self, latitude: float, longitude: float):
+        self.calls.append((latitude, longitude))
+        return self.snapshot
+
+
+def recorded_snapshot(name: str = "delhi_recorded"):
+    from pathlib import Path
+
+    from app.services.environment.models import EnvironmentSnapshot
+
+    path = Path(__file__).resolve().parents[1] / "fixtures" / "risk" / f"{name}.json"
+    return EnvironmentSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def environment():
+    return FakeEnvironment(recorded_snapshot())
+
+
+@pytest.fixture
+def limiter():
+    from app.core.ratelimit import LoginRateLimiter
+
+    return LoginRateLimiter(max_failures_per_email=5, max_attempts_per_ip=20, window_seconds=900)
+
+
+@pytest.fixture
+def client(db_session, environment, limiter):
+    from fastapi.testclient import TestClient
+
+    from app.api.deps import get_login_limiter
+    from app.api.risk import get_environment
+    from app.core.database import get_db
+    from main import app
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[get_login_limiter] = lambda: limiter
+    app.dependency_overrides[get_environment] = lambda: environment
+    try:
+        yield TestClient(app)  # no `with`: the real lifespan (live environment service) is not started
+    finally:
+        app.dependency_overrides.clear()
+
+
+def register(client, email: str | None = None, password: str = STRONG_PASSWORD, **extra):
+    body = {"name": "Test User", "email": email or unique_email(), "password": password, "consent": True, **extra}
+    return client.post("/auth/register", json=body)
+
+
+def login(client, email: str, password: str = STRONG_PASSWORD):
+    return client.post("/auth/login", json={"email": email, "password": password})
+
+
+def new_user(client) -> tuple[str, dict]:
+    """Register + login; returns (email, Authorization header)."""
+    email = unique_email()
+    assert register(client, email).status_code == 201
+    response = login(client, email)
+    assert response.status_code == 200
+    return email, {"Authorization": f"Bearer {response.json()['access_token']}"}

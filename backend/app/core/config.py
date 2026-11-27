@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> parents[2] is backend/
@@ -40,6 +40,53 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     debug: bool = False
     database_url: SecretStr  # required: no default
+
+    # ---- Environmental data (Go 2) ----
+    # Optional: without a key the OpenAQ station data is skipped, everything else works.
+    openaq_api_key: SecretStr | None = None
+    # Station readings older than this are ignored / marked stale.
+    openaq_max_age_hours: float = Field(default=3.0, gt=0, le=72)
+
+    # ---- Environmental data cache (Go 3), see docs/caching.md ----
+    env_cache_grid_degrees: float = Field(default=0.05, ge=0.001, le=1.0)
+    # Finer grid for elevation only (~1 km): elevation changes fast in mountains.
+    env_cache_elevation_grid_degrees: float = Field(default=0.01, ge=0.001, le=1.0)
+    env_cache_ttl_weather_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_air_quality_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_openaq_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_elevation_days: int = Field(default=30, ge=1, le=365)
+    env_cache_max_stale_hours: float = Field(default=6.0, gt=0, le=72)
+
+    # ---- Authentication (Go 5), see docs/auth.md ----
+    # Required for auth endpoints; optional here so tools/tests without auth still load settings.
+    jwt_secret_key: SecretStr | None = None
+    access_token_expire_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    refresh_token_expire_days: int = Field(default=7, ge=1, le=90)
+    refresh_cookie_secure: bool = False  # MUST be true in production (HTTPS)
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    cors_origins: str = "http://localhost:3000"  # comma-separated
+    login_max_failures_per_email: int = Field(default=5, ge=1, le=100)
+    login_max_attempts_per_ip: int = Field(default=20, ge=1, le=1000)
+    login_window_minutes: int = Field(default=15, ge=1, le=24 * 60)
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @field_validator("jwt_secret_key", mode="before")
+    @classmethod
+    def jwt_secret_long_enough(cls, value: object) -> object:
+        if isinstance(value, str):
+            if not value.strip():
+                return None
+            if len(value.strip()) < 32:
+                raise ValueError("JWT_SECRET_KEY must be at least 32 characters")
+        return value
+
+    @field_validator("openaq_api_key", mode="before")
+    @classmethod
+    def blank_key_means_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("database_url")
     @classmethod
