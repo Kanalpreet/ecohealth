@@ -313,3 +313,191 @@ Rules:
 | **Flip tiles**: a tile turns over (rotateY 0 → 180°, spring) on click, tap, Enter or Space, showing the "What we watch for" chips and a tip; the faces use `backface-visibility: hidden` | `/for-families` (`components/families/FlipTiles.jsx`) | Motion | **signature** (the page's only one) | no 3D: the face switches instantly |
 | "Why?" chevron rotates (CSS transform); the reason appears without animation | `/for-families` Same air card | CSS | subtle | instant |
 | **CountUp**: the number counts from 0 to its value (1.2 s) once 60% visible; the prefix/suffix and the screen-reader text are final from the start | `/about` impact and product stats (`components/ui/CountUp.jsx`) | Motion (motion value) | subtle | final number at once |
+
+## 9. Logged-in app (F3–F4)
+
+Light theme only. Code: `components/layout/AppLayout.jsx`, `pages/app/`, `pages/DashboardPage.jsx`.
+All backend calls go through `services/api.js`; server data uses TanStack Query
+(`hooks/useFamily.js`, `hooks/useRisk.js`).
+
+### Layout and routing
+- **Desktop (1024 px and up):** a left sidebar.
+  - Items: Dashboard, Family, Risk Map, Trips and Alerts, and Settings. Risk Map is a
+    placeholder until F5; Trips and Alerts are disabled with a "Soon" tag because the
+    backend has no support yet.
+  - A user menu at the bottom (Settings, Log out); Escape or a click outside closes it.
+- **Topbar:** "Home:" with the rounded coordinates and a Change link
+  (`/settings#home-area`). The backend stores no place name, so coordinates are shown.
+- **Mobile:** a compact topbar and a bottom tab bar (Dashboard, Family, Map, Settings).
+- **Guards:**
+  - App routes sit behind `ProtectedRoute requireHome`: logged-out visitors go to
+    `/login?next=…`, and users without a home location go to `/onboarding` first.
+  - `/onboarding` has its own minimal layout.
+- **Lazy loading:** app pages are lazy routes. MapLibre and Recharts are separate lazy
+  chunks.
+
+### Onboarding (`/onboarding`)
+- **Steps:** Account (done) → Home area → Family (optional, "Skip for now").
+- **Home area** (`components/map/LocationPicker.jsx`, also used in Settings):
+  - "Use my current location": browser geolocation, requested only on click.
+  - Place search: Open-Meteo Geocoding API (`services/geocoding.js`), free with no key,
+    data from GeoNames (CC BY 4.0). Debounced 350 ms; searches India first and falls
+    back to worldwide. Only the typed text is sent.
+  - Clicking the map: MapLibre GL JS with the OpenFreeMap "positron" style (free, no
+    key; © OpenStreetMap contributors, © OpenMapTiles). The attribution is always shown.
+  - Every point is rounded to 2 decimals (about 1 km) before it is shown or saved, and
+    a soft 1 km circle shows the rounding.
+  - The time zone is prefilled from the browser (or the chosen place) and is editable.
+  - Saved with `PATCH /me {home_lat, home_lon, timezone}`.
+- **Map safety** (`components/map/SafeMap.jsx`, `MapFallback.jsx`):
+  - The lazy map sits inside an error boundary. A failed chunk load, no WebGL, a base
+    map that fails before it loads, or no load within 15 s shows an in-page fallback
+    with latitude/longitude inputs. A map problem never crashes the page.
+  - MapLibre v6 computes its worker URL at runtime, so `MapView.jsx` imports
+    `maplibre-gl-worker.mjs?url` and calls `setWorkerUrl()`.
+  - `vite.config.js` pre-bundles `maplibre-gl` for dev (`optimizeDeps.include`).
+
+### Family (`/family`)
+- **Cards:** initial avatar, name, age, conditions, and routines as pills. Cards use a
+  layout animation when added or removed (none under reduced motion).
+- **Add/edit:** a side panel (`ui/Drawer.jsx`: native `<dialog>`, focus trap, Escape;
+  a bottom sheet on mobile). It holds the member form plus the routines editor.
+- **Conditions:** exactly the codes the risk engine knows: `asthma`, `copd`,
+  `heart_disease`, `diabetes`, `pregnancy`. The API accepts any snake_case code, but
+  unknown codes would not change the score.
+- **Sensitivity mapping:** the backend stores a multiplier from 0.5 to 2.0 (default
+  1.0) that scales the whole score (`total = sensitivity × age modifier × raw`).
+  - The UI offers five steps: Much lower 0.5 · Lower 0.75 · Typical 1.0 · Higher 1.5 ·
+    Much higher 2.0.
+  - A stored value between steps (e.g. 1.2, set via the API) is shown on the nearest
+    step and is only overwritten if the user changes the control.
+- **Routines:**
+  - Fields: an activity (common list plus "Other" with free text), a time (local time
+    in the user's time zone), and weekday chips. There is no "Outdoor" toggle (no
+    backend field).
+  - Limits shown: 10 members and 20 routines. Deletes ask for confirmation.
+
+### Settings (`/settings`)
+- **Profile:** name and time zone; email read-only.
+- **Home area:** a map preview and the same picker.
+- **Alerts:** shown disabled with "Coming soon".
+- **Download my data:** `GET /me/export`, saved as JSON.
+- **Delete account:** requires typing DELETE, then navigates to `/` and logs out.
+- **Log out.**
+
+### Dashboard (`/dashboard`) data flow
+- **Data used:**
+  - `GET /family/risk`: one card per member from one environment snapshot (score,
+    level, top factors, missing factors, next safe window, unsafe routine names),
+    plus `generated_at`, `timezone`, `data_sources` and `disclaimer`.
+  - `GET /members/{first}/risk`: the "Today at home" values (AQI and CPCB category,
+    PM2.5, temperature, feels-like, UV, temperature swing) come from
+    `assessment.inputs`. They are environment values, identical for every member;
+    the family endpoint doesn't return them.
+  - `GET /members` for conditions, and `GET /members/{id}/routines` for routine
+    times, so unsafe routines can say "Morning walk 6:30 AM is unsafe".
+- **Never invented:** any missing value reads "Not available", and missing factors
+  are listed.
+- **Refresh:**
+  - Automatic: when the window regains focus, and every 30 minutes (the backend's
+    cache TTL).
+  - Manual: a Refresh button with a spinning icon.
+  - "Updated X min ago" comes from `generated_at` and updates every minute.
+  - The source state is the worst provider state: live / cached / older data (the
+    latest update failed).
+- **Error and empty states:**
+  - 409 (no home): a message and a button to set it.
+  - No members: a message and a button to /family.
+  - 503: a message with retry.
+  - Loading: skeletons.
+- **Greeting:** in the user's time zone. Good morning 5–12, Good afternoon 12–17,
+  Good evening otherwise.
+- **Today's tips** (`lib/tips.js`, labelled "Simple rules based on today's data", no
+  AI). Maximum 3, in this order:
+  1. Air Poor, Very Poor or Severe → wear an N95 mask outdoors.
+  2. The earliest next safe window → "Best time outside: …". If no member has one →
+     keep time outdoors short.
+  3. heat in any member's top factors → water and shade.
+  4. uv → shade, a hat and sunscreen.
+  5. cold → warm layers.
+  6. temperature_swing → carry an extra layer.
+
+### Member detail (`/dashboard/:memberId`)
+- **Data:** `GET /members/{id}/risk` and `GET /members/{id}/risk/hourly`.
+- **Header:** score (count-up) and RiskBadge, with "Mainly due to <top factor>".
+- **Why this score?:**
+  - The FactorBar shows factor shares (`contribution_pct` > 0, with neutral factor
+    colours, never the risk palette), linked to rows with input values (AQI with
+    AirBadge and PM2.5 basis, feels-like, temperature, swing, UV).
+  - Missing factors appear with the reason. Altitude shows as "not applied" at home.
+  - A sensitivity box lists the age group (× age modifier), conditions (with their
+    multipliers) and the sensitivity setting.
+- **Next 24 hours** (`components/dashboard/HourlyChart.jsx`, Recharts, lazy chunk):
+  - An area chart of the hourly score over five soft level bands. Each band is named
+    on the Y axis (Low … Dangerous), so colour is never the only signal.
+  - Safe windows are shaded and also listed as chips above the chart. A dashed
+    "Now" line marks the current hour.
+  - Hourly scores use each hour's AQI, so they can differ from the current score
+    (24-hour mean); the page says so.
+  - **Chart accessibility:** the SVG is `aria-hidden`, and a visually hidden `<table>`
+    (time, score, level) gives screen readers the same data.
+- **Routines:**
+  - Each shows its next occurrence and expected level (RiskBadge with score).
+  - Unsafe ones are highlighted with a suggestion from the next safe window ("Try
+    4:00 PM instead"), or "No safe time in the next 24 hours".
+  - `no_forecast` says the time is beyond the forecast.
+- **Data sources:** each provider's state and fetch time, with Open-Meteo (CC BY 4.0)
+  and OpenAQ attribution, the engine version and the disclaimer.
+
+### Added animations
+| What | Where | Library | Reduced motion |
+|---|---|---|---|
+| Score count-up (0 → score, once when visible) | dashboard cards, member header (`CountUp`) | Motion | final number at once; screen readers always get the final value |
+| AQI gauge marker + count-up | Today at home (`AqiGauge`) | Motion | static |
+| Live "now" marker moves every minute with a soft ping (scale + opacity) | `SafeHoursBar liveTimezone` (dashboard cards, member detail) | CSS / Motion | no pulse, still updates |
+| Refresh icon spins while risk data loads | `RiskStatus` | CSS | not spinning |
+| Member cards layout animation on add/remove | `/family` | Motion | none |
+
+### Risk Map (`/map`, F5)
+- **Data:**
+  - There is no backend endpoint for area conditions or monitoring stations yet. The
+    page uses what exists:
+    - The rounded home location (`GET /me`).
+    - `GET /family/risk` for freshness and data sources.
+    - The first member's `GET /members/{id}/risk` `assessment.inputs` for AQI, CPCB
+      category, PM2.5 and its basis.
+  - A user with no family members therefore sees "add a family member" instead of the
+    current air.
+  - The station layer is shown **disabled with "Coming soon"**, and the nearest station
+    reads "Not available yet". Nothing is made up.
+- **Map** (`components/map/RiskMap.jsx`, lazy, behind `MapErrorBoundary`):
+  - **Base map and credits:** the OpenFreeMap "positron" style, with attribution for
+    the tiles plus "Air quality: Open-Meteo, OpenAQ".
+  - **Home area:** a pin and a ~1 km privacy circle tinted with the current CPCB
+    **air** category colour (`AQI_CATEGORIES[].hex`; MapLibre paint can't read CSS
+    variables). Neutral grey when the category is unknown. Never a person's risk colour.
+  - **Controls:** accessible HTML buttons for zoom in, zoom out and "Recenter on home",
+    plus a "Show stations" switch (disabled, "Coming soon").
+  - MapLibre's CSS sets `.maplibregl-map { position: relative }`, so the map container
+    must size itself with `h-full w-full`, not `absolute inset-0`.
+- **"Your area" card:** floats over the map on desktop and becomes a bottom sheet below
+  the map on mobile. It shows the AirBadge with category and AQI, PM2.5 (with its basis),
+  "Updated … ago" and the nearest station (not available yet). The sheet does not
+  overlap the map, so the tile attribution stays visible.
+- **Legend:** CPCB PM2.5 categories, 24-hour average in µg/m³ (`PM25_BREAKPOINTS` in
+  `lib/aqi.js`): Good 0–30, Satisfactory 31–60, Moderate 61–90, Poor 91–120,
+  Very Poor 121–250, Severe above 250. A note says station readings will be hourly and
+  indicative.
+- **Accessibility:** every value on the map is also in the "Your area" card as text.
+  The map region has a descriptive label. Controls are real buttons with labels. The
+  disabled switch has `aria-disabled` and "(coming soon)" in its name.
+- **Fallback:** if the MapLibre chunk fails, there is no WebGL, the base map fails
+  before loading, or nothing loads within 15 s, a text card replaces the map with the
+  same information (home coordinates, category, AQI, PM2.5) and a reload button.
+- **States:** a loading skeleton; 409 or no home → "Set home area" (link to
+  `/settings#home-area`); 503 → a message with retry.
+- **Signature fly-in:**
+
+| What | Where | Library | Reduced motion |
+|---|---|---|---|
+| Map glides from India to the home area (`flyTo`, 2.4 s), then the privacy circle expands from 15% to 100% of 1 km and fades in (0.9 s, canvas layer data). Station markers will pop in one after another once the API provides stations | `/map` (`RiskMap`) | MapLibre + requestAnimationFrame | starts on the home view with the full circle; no animation |

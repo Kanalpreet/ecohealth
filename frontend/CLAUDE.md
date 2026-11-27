@@ -13,7 +13,7 @@ and [design.md](../design.md) still apply; the frontend design is in
 4. **`python` is not on PATH.** Use the backend venv: `backend\.venv\Scripts\python.exe`
    (e.g. `backend\.venv\Scripts\python.exe -m pytest`). Use `py` only to create a new venv.
 5. **Work only in `frontend/`** unless a backend/docs change has been agreed first.
-6. **All backend calls go through `src/services/api.js`.** No `fetch` anywhere else. Each
+6. **All backend calls go through `src/services/api.js`.** (The only other network calls: place search in `src/services/geocoding.js` and map tiles from OpenFreeMap.) No `fetch` anywhere else. Each
    function there has a comment describing the request and the response fields; keep it
    updated when you add one.
 7. **Never store tokens in `localStorage` / `sessionStorage`** (or cookies set from JS).
@@ -57,6 +57,9 @@ src/
     home/        Home page sections (hero, persona switcher, features, modes)
     features/    /features sections (feature demos, comparison table, travel preview)
     how/         /how-it-works sections (steps, agents flow, why-this-score example, trust + FAQ)
+    map/         SafeMap + MapErrorBoundary, MapView (picker map), RiskMap (/map), MapFallback, LocationPicker
+    family/      member and routine forms, member card and side panel
+    dashboard/   risk status, today card, family risk card, hourly chart (Recharts, lazy)
     layout/      AppLayout (signed-in app shell)
     AuthProvider.jsx
   hooks/         useAuth, useToast, useMotionSafe, useDocumentTitle
@@ -87,6 +90,8 @@ React Fast Refresh and the lint rule `react-refresh/only-export-components` stay
   `Mountain`, `Leaf`, `Trees`), including the logo (`LogoMark`: air-flow lines, keep
   `public/favicon.svg` in sync). Visual direction is "clean air, made
   visible": use `components/air/` (gradient, particles, glow circles) and product-UI previews.
+- App risk screens show only API values: anything missing says "Not available". Never mix RiskBadge (people) and AirBadge (air).
+- Load MapLibre only through `SafeMap` and Recharts only through `React.lazy`; never import them statically in shared code.
 - Sample/demo data on public pages is labelled "Example" or "Sample", never "Live".
 - WCAG AA contrast (4.5:1 text, 3:1 UI borders). Use the existing tokens; check new colours.
 - Every page must work at **360 px** wide with no horizontal scrolling.
