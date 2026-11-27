@@ -17,7 +17,9 @@ from zoneinfo import ZoneInfo
 BACKEND_DIR = Path(__file__).resolve().parents[1] / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 
-from app.services.environment import EnvironmentService, EnvironmentSnapshot  # noqa: E402
+from app.core.database import get_engine  # noqa: E402
+from app.core.logging import configure_logging  # noqa: E402
+from app.services.environment import CachedEnvironmentService, EnvironmentSnapshot  # noqa: E402
 
 LOCATIONS = [("Delhi", 28.61, 77.21), ("Leh", 34.15, 77.58)]
 DISPLAY_TZ = ZoneInfo("Asia/Kolkata")  # both demo locations are in India
@@ -32,10 +34,22 @@ def fmt(value: float | None, unit: str = "", digits: int = 1) -> str:
     return "n/a" if value is None else f"{value:.{digits}f}{(' ' + unit) if unit else ''}"
 
 
-def print_snapshot(name: str, snap: EnvironmentSnapshot) -> None:
+def print_sources(snap: EnvironmentSnapshot) -> None:
+    print("Sources:")
+    for provider, src in snap.sources.items():
+        expires = f", expires {when(src.expires_at)}" if src.expires_at else ""
+        print(f"  {provider:24s} {src.source.upper():6s} fetched {when(src.fetched_at)}{expires}")
+    for failure in snap.failures:
+        print(f"  {failure.provider:24s} FAILED ({failure.kind}: {failure.reason})")
+
+
+def print_snapshot(name: str, requested: tuple[float, float], snap: EnvironmentSnapshot) -> None:
     print("=" * 72)
-    print(f"{name}  ({snap.latitude}, {snap.longitude})   generated {when(snap.generated_at)}")
+    cell = f"grid cell ({snap.latitude:.2f}, {snap.longitude:.2f})" if snap.cell else ""
+    print(f"{name}  requested {requested}  {cell}")
+    print(f"generated {when(snap.generated_at)}")
     print("=" * 72)
+    print_sources(snap)
 
     w = snap.weather
     if w and w.current:
@@ -96,14 +110,18 @@ def print_snapshot(name: str, snap: EnvironmentSnapshot) -> None:
 
 
 async def main() -> None:
-    async with EnvironmentService.create() as service:
-        snapshots = await asyncio.gather(*(service.get_snapshot(lat, lon) for _, lat, lon in LOCATIONS))
-    for (name, _, _), snap in zip(LOCATIONS, snapshots, strict=True):
-        print_snapshot(name, snap)
+    try:
+        async with CachedEnvironmentService.create() as service:
+            snapshots = await asyncio.gather(*(service.get_snapshot(lat, lon) for _, lat, lon in LOCATIONS))
+    finally:
+        get_engine().dispose()
+    for (name, lat, lon), snap in zip(LOCATIONS, snapshots, strict=True):
+        print_snapshot(name, (lat, lon), snap)
     print("Weather and air quality data by Open-Meteo.com (CC BY 4.0, CAMS / Copernicus);"
           " station data from OpenAQ (openaq.org) and the listed data owners.")
 
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(errors="replace")
+    configure_logging()  # keeps httpx at WARNING: no request URLs with coordinates
     asyncio.run(main())
