@@ -17,3 +17,4 @@ alembic==1.20.1
 # ---- Testing ----
 pytest==9.2.0
 httpx==0.29.0  # used by FastAPI's TestClient
+hypothesis==6.170.17  # property-based tests (risk engine)

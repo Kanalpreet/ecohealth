@@ -24,7 +24,7 @@ altitude) into personalised climate-health awareness for a user and their family
 
 Key docs: [docs/database.md](docs/database.md), [docs/data-model.md](docs/data-model.md),
 [docs/configuration.md](docs/configuration.md), [docs/environment-data.md](docs/environment-data.md),
-[docs/caching.md](docs/caching.md).
+[docs/caching.md](docs/caching.md), [docs/risk-engine.md](docs/risk-engine.md).
 
 Environmental data sources: **Open-Meteo** (weather, air quality, elevation; no key)
 and **OpenAQ v3** (ground stations; optional `OPENAQ_API_KEY`). **NASA FIRMS / fire
@@ -33,6 +33,12 @@ data is not used.** Alerts (later) will use **email and browser web push**, not 
 Provider results are cached per provider per grid cell (0.05°) in the `env_cache`
 table: use `CachedEnvironmentService` (not `EnvironmentService` directly) in app code.
 Every snapshot says per provider whether data is `live`, `cache` or `stale`.
+
+Risk engine (`backend/app/services/risk/`, ENGINE_VERSION in `risk_config.py`):
+`assess(member, snapshot)`, `hourly_assessment`, `safe_windows`, `check_routines`.
+Deterministic Python only; every threshold lives in `risk_config.py` with its source;
+changing any value means bumping `ENGINE_VERSION`. Altitude counts only in the
+`travel` context. Missing data is excluded and reported, never scored as 0.
 
 ## Run on Windows (PowerShell)
 
@@ -55,6 +61,12 @@ run it twice: first `LIVE`, then `CACHE`), from the repo root:
 
 ```powershell
 backend\.venv\Scripts\python.exe scripts\fetch_environment.py
+```
+
+Risk engine demo (3 family members x 4 scenarios; deterministic, no LLM):
+
+```powershell
+backend\.venv\Scripts\python.exe scripts\assess_risk.py
 ```
 
 ## Rules
