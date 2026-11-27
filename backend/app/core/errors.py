@@ -12,6 +12,7 @@ import re
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -77,6 +78,29 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
+def safe_validation_errors(errors: list[dict]) -> list[dict]:
+    """Keep only location, message and type: never `input` (could be a password), `ctx` or `url`."""
+    return [
+        {"loc": list(err.get("loc", ())), "msg": str(err.get("msg", "Invalid value")), "type": err.get("type", "value_error")}
+        for err in errors
+    ]
+
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "validation_error",
+            "message": "The request is invalid.",
+            "details": safe_validation_errors(exc.errors()),
+            "request_id": request_id,
+        },
+        headers={REQUEST_ID_HEADER: request_id},
+    )
+
+
 def install_error_handling(app: FastAPI) -> None:
     app.add_middleware(RequestIdMiddleware)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

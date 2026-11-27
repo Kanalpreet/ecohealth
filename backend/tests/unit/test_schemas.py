@@ -53,7 +53,7 @@ def test_user_create_rejects_bad_name(name):
         user_create(name=name)
 
 
-@pytest.mark.parametrize(("password", "ok"), [("x" * 7, False), ("x" * 8, True), ("x" * 128, True), ("x" * 129, False)])
+@pytest.mark.parametrize(("password", "ok"), [("x" * 9, False), ("x" * 10, True), ("x" * 128, True), ("x" * 129, False)])
 def test_user_create_password_length_boundaries(password, ok):
     if ok:
         assert user_create(password=password).password.get_secret_value() == password
