@@ -3,7 +3,8 @@
 
 from app.models.env_cache import EnvCache
 from app.models.family_member import FamilyMember
+from app.models.refresh_token import RefreshToken
 from app.models.routine import Routine
 from app.models.user import User
 
-__all__ = ["EnvCache", "FamilyMember", "Routine", "User"]
+__all__ = ["EnvCache", "FamilyMember", "RefreshToken", "Routine", "User"]
