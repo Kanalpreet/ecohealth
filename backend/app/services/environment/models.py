@@ -159,6 +159,7 @@ class EnvironmentSnapshot(_Timed):
     warnings: list[str] = Field(default_factory=list)
     sources: dict[ProviderName, ProviderSource] = Field(default_factory=dict)
     cell: GridCell | None = None  # set by CachedEnvironmentService
+    elevation_cell: GridCell | None = None  # elevation uses its own, finer grid
 
     def failed(self, provider: ProviderName) -> bool:
         return any(f.provider == provider for f in self.failures)

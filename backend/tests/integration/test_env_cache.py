@@ -159,13 +159,34 @@ def store(db_session):
     return SqlCacheStore(session_factory=factory)
 
 
-def test_sql_store_put_get_and_cleanup(store, db_session):
-    cell = Cell(lat=LAT, lon=Decimal("12.0000"), grid=Decimal("0.05"))
-    asyncio.run(store.put("openaq", cell, CacheEntry({"x": 1}, NOW - timedelta(hours=8), NOW - timedelta(hours=7))))
-    entry = asyncio.run(store.get("openaq", cell))
-    assert entry.payload == {"x": 1} and entry.fetched_at == NOW - timedelta(hours=8)
+def test_sql_store_batch_put_get_and_cleanup(store, db_session):
+    old = ("openaq", LAT, Decimal("12.0000"))
+    fresh = ("weather", LAT, Decimal("12.0000"))
+    missing = ("air_quality", LAT, Decimal("12.0000"))
+    asyncio.run(store.put_many([
+        (old, CacheEntry({"x": 1}, NOW - timedelta(hours=8), NOW - timedelta(hours=7))),
+        (fresh, CacheEntry({"y": 2}, NOW, NOW + timedelta(minutes=30))),
+    ]))
+
+    entries = asyncio.run(store.get_many([old, fresh, missing]))  # ONE query for all three keys
+    assert set(entries) == {old, fresh}
+    assert entries[old].payload == {"x": 1} and entries[old].fetched_at == NOW - timedelta(hours=8)
+    assert entries[fresh].payload == {"y": 2}
+
     assert asyncio.run(store.cleanup(NOW, timedelta(hours=6))) >= 1
-    assert asyncio.run(store.get("openaq", cell)) is None
+    assert set(asyncio.run(store.get_many([old, fresh]))) == {fresh}
+
+
+def test_get_entries_returns_all_requested_rows_in_one_query(db_session):
+    put(db_session, provider="weather", lon=Decimal("13.0000"))
+    put(db_session, provider="elevation", lon=Decimal("13.0100"))
+    rows_found = repo.get_entries(
+        db_session, [("weather", LAT, Decimal("13.0000")), ("elevation", LAT, Decimal("13.0100")),
+                     ("openaq", LAT, Decimal("13.0000"))]
+    )
+    assert {(r.provider, r.cell_lon) for r in rows_found} == {("weather", Decimal("13.0000")),
+                                                              ("elevation", Decimal("13.0100"))}
+    assert repo.get_entries(db_session, []) == []
 
 
 def test_cached_service_live_then_cache_with_real_table(store):
@@ -177,10 +198,13 @@ def test_cached_service_live_then_cache_with_real_table(store):
 
     first = asyncio.run(cached.get_snapshot(-89.51, 10.01))
     clock.advance(minutes=5)
-    second = asyncio.run(cached.get_snapshot(-89.49, 9.99))  # same cell
+    second = asyncio.run(cached.get_snapshot(-89.512, 10.008))  # same 0.05° cell AND same 0.01° elevation cell
+    third = asyncio.run(cached.get_snapshot(-89.49, 9.99))  # same 0.05° cell, different elevation cell
 
-    assert not any(w.startswith("cache:") for w in first.warnings + second.warnings)
+    assert not any(w.startswith("cache:") for w in first.warnings + second.warnings + third.warnings)
     assert {s.source for s in first.sources.values()} == {"live"}
     assert {s.source for s in second.sources.values()} == {"cache"}
-    assert len(service.calls) == 4
+    assert {p: s.source for p, s in third.sources.items()}["open-meteo-elevation"] == "live"
+    assert {s.source for p, s in third.sources.items() if p != "open-meteo-elevation"} == {"cache"}
+    assert len(service.calls) == 5  # 4 live on first snapshot + elevation for the new fine cell
     assert second.stations.stations[0].pm2_5.age_minutes == 5

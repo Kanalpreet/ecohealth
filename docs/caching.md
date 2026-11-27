@@ -31,7 +31,8 @@ Entry point: `CachedEnvironmentService.get_snapshot(lat, lon)`.
 
 | Setting (`backend/.env`) | Default | Meaning |
 |---|---|---|
-| `ENV_CACHE_GRID_DEGREES` | `0.05` | Grid size in degrees (0.001–1) |
+| `ENV_CACHE_GRID_DEGREES` | `0.05` | Grid size in degrees (0.001–1) for weather, air quality, OpenAQ |
+| `ENV_CACHE_ELEVATION_GRID_DEGREES` | `0.01` | Finer grid (~1 km) for elevation only |
 | `ENV_CACHE_TTL_WEATHER_MINUTES` | `30` | Weather forecast TTL |
 | `ENV_CACHE_TTL_AIR_QUALITY_MINUTES` | `30` | Air quality forecast TTL |
 | `ENV_CACHE_TTL_OPENAQ_MINUTES` | `30` | Station readings TTL |
@@ -69,6 +70,13 @@ cached entry?  ── fresh (now < expires_at) ───────────
   cached station reading never looks younger than it is.
 - **The cache must never break a snapshot**: if the database is unreachable, the
   service fetches live and adds a warning.
+- **Elevation has its own, finer grid** (0.01°): elevation changes quickly in
+  mountains (at Leh the 0.05° cell centre was 3742 m vs 3411 m in town). The
+  snapshot reports both `cell` and `elevation_cell`.
+- **One read and one write per snapshot**: all four cache rows are read with a
+  single query (`(provider, cell_lat, cell_lon) IN (...)`), and everything fetched
+  live is upserted in a single transaction, so a snapshot uses one pooled
+  connection at a time.
 - Concurrent requests for the same cell may both fetch live; the
   `INSERT … ON CONFLICT DO UPDATE` upsert keeps exactly one row per
   (provider, cell).
@@ -122,10 +130,7 @@ request URLs, which contain coordinates.
 
 ## Known limitations
 
-- **Elevation varies inside a cell in mountains.** Leh's cell centre is ~2 km from
-  the town and Open-Meteo reports 3742 m there vs 3411 m at the town. Fine for
-  weather and air quality; for altitude risk a finer grid for elevation is advisable.
-- Cache reads are one query per provider (4 per snapshot, run in threads); each
-  uses a pooled connection.
+- Elevation within a 0.01° cell (~1.1 km) can still differ by tens of metres in
+  steep terrain; this is acceptable for altitude bands that are 500 m+ wide.
 - Concurrent misses for the same cell may both call the provider (no request
   coalescing); the upsert still keeps a single row.

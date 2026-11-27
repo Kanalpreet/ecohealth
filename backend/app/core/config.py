@@ -49,6 +49,8 @@ class Settings(BaseSettings):
 
     # ---- Environmental data cache (Go 3), see docs/caching.md ----
     env_cache_grid_degrees: float = Field(default=0.05, ge=0.001, le=1.0)
+    # Finer grid for elevation only (~1 km): elevation changes fast in mountains.
+    env_cache_elevation_grid_degrees: float = Field(default=0.01, ge=0.001, le=1.0)
     env_cache_ttl_weather_minutes: int = Field(default=30, ge=1, le=24 * 60)
     env_cache_ttl_air_quality_minutes: int = Field(default=30, ge=1, le=24 * 60)
     env_cache_ttl_openaq_minutes: int = Field(default=30, ge=1, le=24 * 60)

@@ -140,7 +140,10 @@ are accepted). The last forecast hours may be `null` beyond the model horizon.
 3. `GET https://api.openaq.org/v3/locations/{id}/latest` for each kept station
    (≤ 6 requests per snapshot in total). Readings are matched to PM2.5/PM10 via the
    location's `sensors[].id` / `parameter.name` (`pm25`, `pm10`).
-4. Each measurement carries `measured_at`, `age_minutes` and `is_stale`
+4. Individual sensor readings older than the max age are **dropped**, even when
+   the station has other fresh sensors (e.g. a PM10 sensor that last reported
+   years ago); a warning counts them. Cached copies are re-aged on read.
+5. Each measurement carries `measured_at`, `age_minutes` and `is_stale`
    (older than the max age) so stale data is always visible.
 
 ## Configuration

@@ -178,13 +178,15 @@ class OpenAQClient:
         stations: list[StationReading] = []
         warnings: list[str] = []
         cleaner = ValueCleaner(PROVIDER)
+        dropped_old = 0
         for (distance_km, location, sensors), result in zip(nearest, results, strict=True):
             if isinstance(result, ProviderError):
                 warnings.append(f"{PROVIDER}: latest readings unavailable for station {location.id} ({result.reason})")
                 continue
             if isinstance(result, BaseException):
                 raise result
-            measurements = self._measurements(result, sensors, now, cleaner)
+            measurements, dropped = self._measurements(result, sensors, now, cleaner)
+            dropped_old += dropped
             if not measurements:
                 ignored_stale += 1
                 continue
@@ -200,10 +202,15 @@ class OpenAQClient:
                 )
             )
 
+        max_age_hours = self.max_age.total_seconds() / 3600
+        if dropped_old:
+            warnings.append(
+                f"{PROVIDER}: {dropped_old} sensor reading(s) older than {max_age_hours:g} h dropped"
+            )
         return StationReport(
             stations=stations,
             ignored_stale_stations=ignored_stale,
-            max_age_hours=self.max_age.total_seconds() / 3600,
+            max_age_hours=max_age_hours,
             radius_km=radius_m / 1000,
             warnings=warnings + cleaner.warnings(),
         )
@@ -214,7 +221,8 @@ class OpenAQClient:
 
     def _measurements(
         self, readings: list[_Latest], sensors: dict[int, str], now: datetime, cleaner: ValueCleaner
-    ) -> dict[str, StationMeasurement]:
+    ) -> tuple[dict[str, StationMeasurement], int]:
+        """Fresh PM measurements per field, and how many old readings were dropped."""
         best: dict[str, _Latest] = {}
         for reading in readings:
             field = sensors.get(reading.sensorsId)
@@ -224,16 +232,22 @@ class OpenAQClient:
                 best[field] = reading
 
         out: dict[str, StationMeasurement] = {}
+        dropped = 0
         for field, reading in best.items():
+            measured_at = reading.datetime.utc
+            age = now - measured_at
+            if age > self.max_age:
+                # Drop old readings even if the station has other fresh sensors
+                # (e.g. a PM10 sensor that last reported years ago).
+                dropped += 1
+                continue
             value = cleaner.clean(field, reading.value)
             if value is None:
                 continue
-            measured_at = reading.datetime.utc
-            age = now - measured_at
             out[field] = StationMeasurement(
                 value=value,
                 measured_at=measured_at,
                 age_minutes=max(0, int(age.total_seconds() // 60)),
-                is_stale=age > self.max_age,
+                is_stale=False,  # fresh by construction; cached copies are re-aged on read
             )
-        return out
+        return out, dropped

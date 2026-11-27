@@ -10,7 +10,7 @@ See docs/caching.md.
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import AbstractContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -140,9 +140,18 @@ class CacheEntry:
     expires_at: datetime
 
 
+CacheKey = tuple[str, Decimal, Decimal]  # (env_cache.provider, cell_lat, cell_lon)
+
+
+def cache_key(provider: str, cell: Cell) -> CacheKey:
+    return (provider, cell.lat, cell.lon)
+
+
 class CacheStore(Protocol):
-    async def get(self, provider: str, cell: Cell) -> CacheEntry | None: ...
-    async def put(self, provider: str, cell: Cell, entry: CacheEntry) -> None: ...
+    """Batch interface: one read and at most one write per snapshot."""
+
+    async def get_many(self, keys: Sequence[CacheKey]) -> dict[CacheKey, CacheEntry]: ...
+    async def put_many(self, items: Sequence[tuple[CacheKey, CacheEntry]]) -> None: ...
     async def cleanup(self, now: datetime, max_stale: timedelta) -> int: ...
 
 
@@ -154,28 +163,35 @@ def default_session_factory() -> Session:
 
 
 class SqlCacheStore:
-    """CacheStore backed by the env_cache table. Each call is its own short transaction."""
+    """CacheStore backed by the env_cache table.
+
+    get_many is ONE query; put_many is ONE transaction. A snapshot therefore uses
+    one pooled connection at a time.
+    """
 
     def __init__(self, session_factory: SessionFactory = default_session_factory) -> None:
         self._session_factory = session_factory
 
-    async def get(self, provider: str, cell: Cell) -> CacheEntry | None:
-        def work() -> CacheEntry | None:
+    async def get_many(self, keys: Sequence[CacheKey]) -> dict[CacheKey, CacheEntry]:
+        def work() -> dict[CacheKey, CacheEntry]:
             with self._session_factory() as session:
-                row = repo.get_entry(session, provider, cell.lat, cell.lon)
-                return None if row is None else CacheEntry(row.payload, row.fetched_at, row.expires_at)
+                rows = repo.get_entries(session, keys)
+                return {
+                    (row.provider, row.cell_lat, row.cell_lon): CacheEntry(row.payload, row.fetched_at, row.expires_at)
+                    for row in rows
+                }
 
         return await asyncio.to_thread(work)
 
-    async def put(self, provider: str, cell: Cell, entry: CacheEntry) -> None:
+    async def put_many(self, items: Sequence[tuple[CacheKey, CacheEntry]]) -> None:
         def work() -> None:
             with self._session_factory() as session:
-                repo.upsert_entry(
-                    session, provider, cell.lat, cell.lon, entry.payload, entry.fetched_at, entry.expires_at
-                )
+                for (provider, lat, lon), entry in items:
+                    repo.upsert_entry(session, provider, lat, lon, entry.payload, entry.fetched_at, entry.expires_at)
                 session.commit()
 
-        await asyncio.to_thread(work)
+        if items:
+            await asyncio.to_thread(work)
 
     async def cleanup(self, now: datetime, max_stale: timedelta) -> int:
         def work() -> int:
@@ -197,11 +213,13 @@ class CachePolicy:
     grid_degrees: float
     ttls: dict[ProviderName, timedelta]
     max_stale: timedelta
+    elevation_grid_degrees: float = 0.01  # elevation varies a lot over short distances in mountains
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "CachePolicy":
         return cls(
             grid_degrees=settings.env_cache_grid_degrees,
+            elevation_grid_degrees=settings.env_cache_elevation_grid_degrees,
             ttls={
                 WEATHER_PROVIDER: timedelta(minutes=settings.env_cache_ttl_weather_minutes),
                 AIR_QUALITY_PROVIDER: timedelta(minutes=settings.env_cache_ttl_air_quality_minutes),
@@ -218,10 +236,15 @@ class _Outcome:
     source: ProviderSource | None = None
     failure: ProviderFailure | None = None
     warnings: list[str] = field(default_factory=list)
+    to_store: CacheEntry | None = None  # set when fetched live; written in one batch
 
 
 def _iso(dt: datetime) -> str:
     return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def _grid_cell(cell: Cell) -> GridCell:
+    return GridCell(latitude=float(cell.lat), longitude=float(cell.lon), grid_degrees=float(cell.grid))
 
 
 class CachedEnvironmentService:
@@ -254,26 +277,53 @@ class CachedEnvironmentService:
         ) as service:
             yield cls(service, store or SqlCacheStore(), CachePolicy.from_settings(settings), clock)
 
+    def cells_for(self, latitude: float, longitude: float) -> dict[ProviderName, Cell]:
+        """Elevation uses its own finer grid; the other providers share the main grid."""
+        main = to_cell(latitude, longitude, self.policy.grid_degrees)
+        fine = to_cell(latitude, longitude, self.policy.elevation_grid_degrees)
+        return {p: (fine if p == ELEVATION_PROVIDER else main) for p in PROVIDER_ORDER}
+
     async def get_snapshot(self, latitude: float, longitude: float) -> EnvironmentSnapshot:
         check_coordinates(latitude, longitude)
-        cell = to_cell(latitude, longitude, self.policy.grid_degrees)
+        cells = self.cells_for(latitude, longitude)
         now = self._clock()
-        outcomes = dict(
-            zip(
-                PROVIDER_ORDER,
-                await asyncio.gather(*(self._resolve(p, cell, now) for p in PROVIDER_ORDER)),
-                strict=True,
-            )
+        snapshot_warnings: list[str] = []
+
+        # 1) ONE read for every provider of this snapshot.
+        keys = {p: cache_key(CACHE_KEYS[p], cells[p]) for p in PROVIDER_ORDER}
+        try:
+            entries = await self.store.get_many(list(keys.values()))
+        except Exception as exc:  # noqa: BLE001 - the cache must never break a snapshot
+            logger.warning("Cache read failed: %s", type(exc).__name__)
+            snapshot_warnings.append("cache: read failed; fetching live")
+            entries = {}
+
+        # 2) Resolve providers concurrently (cache, live or stale).
+        results = await asyncio.gather(
+            *(self._resolve(p, cells[p], now, entries.get(keys[p])) for p in PROVIDER_ORDER)
         )
+        outcomes = dict(zip(PROVIDER_ORDER, results, strict=True))
+
+        # 3) ONE write (single transaction) for everything fetched live.
+        to_store = [(keys[p], o.to_store) for p, o in outcomes.items() if o.to_store is not None]
+        if to_store:
+            try:
+                await self.store.put_many(to_store)
+            except Exception as exc:  # noqa: BLE001 - live data is still returned
+                logger.warning("Cache write failed: %s", type(exc).__name__)
+                snapshot_warnings.append("cache: write failed; live data not cached")
+
         values = {p: o.value for p, o in outcomes.items()}
         warnings = collect_warnings(values[WEATHER_PROVIDER], values[AIR_QUALITY_PROVIDER], values[OPENAQ_PROVIDER])
         for outcome in outcomes.values():
             warnings.extend(outcome.warnings)
+        warnings.extend(snapshot_warnings)
 
+        main = cells[WEATHER_PROVIDER]
         return EnvironmentSnapshot(
             # The snapshot describes the cell, not the user's exact point.
-            latitude=float(cell.lat),
-            longitude=float(cell.lon),
+            latitude=float(main.lat),
+            longitude=float(main.lon),
             generated_at=now,
             weather=values[WEATHER_PROVIDER],
             air_quality=values[AIR_QUALITY_PROVIDER],
@@ -282,7 +332,8 @@ class CachedEnvironmentService:
             failures=[o.failure for o in outcomes.values() if o.failure is not None],
             warnings=warnings,
             sources={p: o.source for p, o in outcomes.items() if o.source is not None},
-            cell=GridCell(latitude=float(cell.lat), longitude=float(cell.lon), grid_degrees=float(cell.grid)),
+            cell=_grid_cell(main),
+            elevation_cell=_grid_cell(cells[ELEVATION_PROVIDER]),
         )
 
     async def cleanup(self) -> int:
@@ -291,10 +342,17 @@ class CachedEnvironmentService:
 
     # ---- one provider ----
 
-    async def _resolve(self, provider: ProviderName, cell: Cell, now: datetime) -> _Outcome:
-        key = CACHE_KEYS[provider]
+    async def _resolve(
+        self, provider: ProviderName, cell: Cell, now: datetime, entry: CacheEntry | None
+    ) -> _Outcome:
         outcome = _Outcome()
-        entry, cached = await self._read(provider, key, cell, outcome)
+        cached = None
+        if entry is not None:
+            try:
+                cached = decode(provider, entry.payload)
+            except ValidationError:
+                logger.warning("Cached %s payload no longer matches the model; treating as a miss", provider)
+                entry = None
 
         if entry is not None and now < entry.expires_at:
             outcome.value = self._prepare(provider, cached, now)
@@ -324,34 +382,10 @@ class CachedEnvironmentService:
             return outcome
 
         expires_at = now + self.policy.ttls[provider]
-        await self._write(provider, key, cell, CacheEntry(encode(provider, value), now, expires_at), outcome)
+        outcome.to_store = CacheEntry(encode(provider, value), now, expires_at)
         outcome.value = value
         outcome.source = ProviderSource(source="live", fetched_at=now, expires_at=expires_at)
         return outcome
-
-    async def _read(
-        self, provider: ProviderName, key: str, cell: Cell, outcome: _Outcome
-    ) -> tuple[CacheEntry | None, Any]:
-        try:
-            entry = await self.store.get(key, cell)
-        except Exception as exc:  # noqa: BLE001 - the cache must never break a snapshot
-            logger.warning("Cache read failed for %s: %s", key, type(exc).__name__)
-            outcome.warnings.append(f"cache: read failed for {key}; fetching live")
-            return None, None
-        if entry is None:
-            return None, None
-        try:
-            return entry, decode(provider, entry.payload)
-        except ValidationError:
-            logger.warning("Cached %s payload no longer matches the model; treating as a miss", key)
-            return None, None
-
-    async def _write(self, provider: ProviderName, key: str, cell: Cell, entry: CacheEntry, outcome: _Outcome) -> None:
-        try:
-            await self.store.put(key, cell, entry)
-        except Exception as exc:  # noqa: BLE001 - live data is still returned
-            logger.warning("Cache write failed for %s: %s", key, type(exc).__name__)
-            outcome.warnings.append(f"cache: write failed for {key}; data not cached")
 
     @staticmethod
     def _prepare(provider: ProviderName, value: Any, now: datetime) -> Any:

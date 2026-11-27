@@ -56,16 +56,21 @@ class FakeStore:
         self.fail_get = False
         self.fail_put = False
         self.cleanup_calls: list[tuple[datetime, timedelta]] = []
+        self.get_calls = 0
+        self.put_calls = 0
 
-    async def get(self, provider: str, cell: Cell) -> CacheEntry | None:
+    async def get_many(self, keys):
+        self.get_calls += 1
         if self.fail_get:
             raise ConnectionError("db down")
-        return self.rows.get((provider, cell.lat, cell.lon))
+        return {k: self.rows[k] for k in keys if k in self.rows}
 
-    async def put(self, provider: str, cell: Cell, entry: CacheEntry) -> None:
+    async def put_many(self, items):
+        self.put_calls += 1
         if self.fail_put:
             raise ConnectionError("db down")
-        self.rows[(provider, cell.lat, cell.lon)] = entry
+        for key, entry in items:
+            self.rows[key] = entry
 
     async def cleanup(self, now: datetime, max_stale: timedelta) -> int:
         self.cleanup_calls.append((now, max_stale))
@@ -107,6 +112,7 @@ POLICY = CachePolicy(
     grid_degrees=0.05,
     ttls={W: timedelta(minutes=30), AQ: timedelta(minutes=30), OA: timedelta(minutes=30), EL: timedelta(days=30)},
     max_stale=timedelta(hours=6),
+    elevation_grid_degrees=0.01,
 )
 
 
@@ -138,8 +144,18 @@ def test_miss_fetches_live_and_stores_every_provider(env):
     assert len(store.rows) == 4
     weather_entry = store.rows[("weather", Decimal("28.6000"), Decimal("77.2000"))]
     assert weather_entry.fetched_at == T0 and weather_entry.expires_at == T0 + timedelta(minutes=30)
-    assert store.rows[("elevation", Decimal("28.6000"), Decimal("77.2000"))].expires_at == T0 + timedelta(days=30)
+    # Elevation is cached on its own finer 0.01° grid.
+    assert store.rows[("elevation", Decimal("28.6100"), Decimal("77.2100"))].expires_at == T0 + timedelta(days=30)
     assert s.sources[W].fetched_at == T0 and s.sources[W].expires_at == T0 + timedelta(minutes=30)
+
+
+def test_one_read_and_one_write_per_snapshot(env):
+    cached, _, store, clock = env
+    snap(cached)  # all misses: one batched read, one batched write
+    assert (store.get_calls, store.put_calls) == (1, 1)
+    clock.advance(minutes=5)
+    snap(cached)  # all hits: one read, nothing to write
+    assert (store.get_calls, store.put_calls) == (2, 1)
 
 
 def test_fresh_hit_is_served_from_cache_without_fetching(env):
@@ -247,18 +263,22 @@ def test_other_grid_sizes_and_clamping(grid, lat, expected):
 def test_users_in_the_same_cell_share_cached_data(env):
     cached, service, _, _ = env
     snap(cached, 28.61, 77.21)
-    s = snap(cached, 28.59, 77.22)  # ~2 km away, same cell
-    assert sources(s) == {p: "cache" for p in ALL}
-    s2 = snap(cached, 28.63, 77.21)  # next cell north
-    assert sources(s2) == {p: "live" for p in ALL}
+    s = snap(cached, 28.59, 77.22)  # ~2 km away: same 0.05° cell, different 0.01° elevation cell
+    assert sources(s) == {W: "cache", AQ: "cache", OA: "cache", EL: "live"}
+    s2 = snap(cached, 28.612, 77.208)  # same cell on both grids
+    assert sources(s2) == {p: "cache" for p in ALL}
+    s3 = snap(cached, 28.63, 77.21)  # next cell north
+    assert sources(s3) == {p: "live" for p in ALL}
 
 
-def test_providers_are_queried_at_the_cell_centre_not_the_exact_point(env):
+def test_providers_are_queried_at_their_cell_centres_not_the_exact_point(env):
     cached, service, _, _ = env
     s = snap(cached, 28.6123, 77.2071)
-    assert {(lat, lon) for _, lat, lon in service.calls} == {(28.6, 77.2)}
+    queried = {p: (lat, lon) for p, lat, lon in service.calls}
+    assert queried == {W: (28.6, 77.2), AQ: (28.6, 77.2), OA: (28.6, 77.2), EL: (28.61, 77.21)}
     assert (s.latitude, s.longitude) == (28.6, 77.2)
     assert (s.cell.latitude, s.cell.longitude, s.cell.grid_degrees) == (28.6, 77.2, 0.05)
+    assert (s.elevation_cell.latitude, s.elevation_cell.longitude, s.elevation_cell.grid_degrees) == (28.61, 77.21, 0.01)
 
 
 # ---- resilience ----
@@ -348,6 +368,7 @@ def test_policy_is_built_from_settings():
     assert policy.grid_degrees == 0.1
     assert policy.ttls[W] == timedelta(minutes=15) and policy.ttls[AQ] == timedelta(minutes=30)
     assert policy.ttls[EL] == timedelta(days=7) and policy.max_stale == timedelta(hours=2)
+    assert policy.elevation_grid_degrees == 0.01  # default
 
 
 @pytest.mark.parametrize(

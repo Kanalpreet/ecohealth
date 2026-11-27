@@ -4,11 +4,12 @@ Every function takes a Session and never commits; the caller decides the
 transaction boundary.
 """
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,14 @@ def get_entry(session: Session, provider: str, cell_lat: Decimal, cell_lon: Deci
         EnvCache.provider == provider, EnvCache.cell_lat == cell_lat, EnvCache.cell_lon == cell_lon
     )
     return session.execute(stmt).scalar_one_or_none()
+
+
+def get_entries(session: Session, keys: Sequence[tuple[str, Decimal, Decimal]]) -> list[EnvCache]:
+    """All cached rows for the given (provider, cell_lat, cell_lon) keys in ONE query."""
+    if not keys:
+        return []
+    stmt = select(EnvCache).where(tuple_(EnvCache.provider, EnvCache.cell_lat, EnvCache.cell_lon).in_(list(keys)))
+    return list(session.execute(stmt).scalars())
 
 
 def upsert_entry(

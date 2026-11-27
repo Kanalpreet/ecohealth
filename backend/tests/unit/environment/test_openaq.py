@@ -82,10 +82,18 @@ def test_measurements_have_values_times_ages_and_stale_flags(make_http):
     assert rk_puram.pm2_5.value == 70.0
     assert rk_puram.pm2_5.measured_at == datetime(2026, 11, 27, 7, 50, tzinfo=UTC)
     assert rk_puram.pm2_5.age_minutes == 30 and rk_puram.pm2_5.is_stale is False
-    # PM10 last measured at 04:00 (4 h 20 min before NOW): kept, but clearly stale.
-    assert rk_puram.pm10.value == 130.0
-    assert rk_puram.pm10.age_minutes == 260 and rk_puram.pm10.is_stale is True
     assert rk_puram.has_fresh_data is True
+
+
+def test_old_sensor_readings_are_dropped_even_if_station_is_fresh(make_http):
+    report = stations(make_http, Recorder(routes()))
+    rk_puram = report.stations[0]
+    # PM10 last measured at 04:00 (4 h 20 min before NOW, max age 3 h): dropped,
+    # while the station's fresh PM2.5 reading is kept.
+    assert rk_puram.pm10 is None
+    assert rk_puram.pm2_5 is not None
+    assert "openaq: 1 sensor reading(s) older than 3 h dropped" in report.warnings
+    assert all(not m.is_stale for s in report.stations for m in (s.pm2_5, s.pm10) if m is not None)
 
 
 def test_max_age_is_configurable(make_http):
@@ -106,7 +114,7 @@ def test_one_station_failing_keeps_the_others(make_http):
     rec = Recorder(routes(**{"/v3/locations/50/latest": sequence(httpx.Response(500))}))
     report = stations(make_http, rec)
     assert [s.station_id for s in report.stations] == [17]
-    assert report.warnings == ["openaq: latest readings unavailable for station 50 (HTTP 500 after 3 attempts)"]
+    assert "openaq: latest readings unavailable for station 50 (HTTP 500 after 3 attempts)" in report.warnings
 
 
 def test_implausible_readings_are_removed_and_flagged(make_http):
