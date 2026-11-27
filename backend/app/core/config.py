@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> parents[2] is backend/
@@ -40,6 +40,17 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     debug: bool = False
     database_url: SecretStr  # required: no default
+
+    # ---- Environmental data (Go 2) ----
+    # Optional: without a key the OpenAQ station data is skipped, everything else works.
+    openaq_api_key: SecretStr | None = None
+    # Station readings older than this are ignored / marked stale.
+    openaq_max_age_hours: float = Field(default=3.0, gt=0, le=72)
+
+    @field_validator("openaq_api_key", mode="before")
+    @classmethod
+    def blank_key_means_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("database_url")
     @classmethod
