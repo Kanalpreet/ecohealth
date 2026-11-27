@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/*
+ * EcoHealth design tokens (docs/frontend.md §5).
+ * Calm and trustworthy: deep teal brand, warm neutral background, slate text.
+ * Every text/background pair used below meets WCAG AA (4.5:1 for text).
+ * Tailwind v4 turns each --color-* / --radius-* / --shadow-* / --font-* token
+ * into utilities, e.g. bg-brand, text-muted, rounded-card, shadow-card.
+ */
+@theme {
+  /* Typography: system fonts only, nothing downloaded. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
+
+  /* Surfaces and text */
+  --color-canvas: #f6f6f2; /* page background (warm neutral) */
+  --color-surface: #ffffff; /* cards, inputs */
+  --color-subtle: #eef2f0; /* quiet panels, skeletons */
+  --color-ink: #1e293b; /* body text, 14.6:1 on white */
+  --color-muted: #475569; /* secondary text, 7.5:1 on white */
+  --color-line: #e2e0da; /* decorative borders (cards) */
+  --color-line-strong: #6b7280; /* input borders, 4.8:1: UI components need 3:1 */
+
+  /* Brand */
+  --color-brand: #0f766e; /* white text on it: 5.5:1 */
+  --color-brand-hover: #115e59;
+  --color-brand-soft: #e6f2f0;
+  --color-focus: #2563eb; /* focus ring */
+
+  /* Feedback */
+  --color-danger: #b42318; /* white text on it: 6.5:1 */
+  --color-danger-soft: #fdecea;
+  --color-success: #15803d;
+  --color-success-soft: #e8f5ec;
+  --color-info: #1d4ed8;
+  --color-info-soft: #e8eefc;
+
+  /*
+   * Risk levels: colour-blind-friendly ramp based on the Okabe-Ito palette
+   * (blue -> yellow -> orange -> burnt orange -> purple; no red/green pair).
+   * Colour is NEVER the only signal: RiskBadge always shows an icon and the label.
+   */
+  --color-risk-low: #0072b2; /* white text 5.2:1 */
+  --color-risk-low-ink: #ffffff;
+  --color-risk-moderate: #f0e442; /* dark text 10.7:1 */
+  --color-risk-moderate-ink: #1e293b;
+  --color-risk-high: #e69f00; /* dark text 6.3:1 */
+  --color-risk-high-ink: #1e293b;
+  --color-risk-very-high: #b34700; /* white text 5.5:1 */
+  --color-risk-very-high-ink: #ffffff;
+  --color-risk-dangerous: #7e2e84; /* white text 8.1:1 */
+  --color-risk-dangerous-ink: #ffffff;
+
+  /* Shape and depth */
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-raised: 0 4px 12px rgb(15 23 42 / 0.1), 0 2px 4px rgb(15 23 42 / 0.06);
+  --shadow-overlay: 0 20px 40px rgb(15 23 42 / 0.18);
+
+  /* Spacing uses Tailwind's 0.25rem scale (p-4 = 1rem); page gutters below. */
+  --spacing-gutter: 1rem;
+  --container-content: 72rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    min-width: 320px;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply text-ink;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-brand-soft);
+  }
+}
+
+/* Reduced motion: switch off CSS transitions/animations everywhere.
+   Motion (JS) animations are switched off separately via MotionConfig + useReducedMotion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Native <dialog> backdrop (Modal). */
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.45);
+}
