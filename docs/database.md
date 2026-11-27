@@ -16,6 +16,8 @@ EcoHealth connects to **Supabase PostgreSQL** through **SQLAlchemy 2.x** and the
 Importing `database.py` never connects and never reads `DATABASE_URL`.
 The raw URL is read in exactly one place: `get_engine()`.
 
+ORM models and API schemas are described in [data-model.md](data-model.md).
+
 ## Connection URL
 
 Use the Supabase **Session Pooler** (port 5432) with the Psycopg 3 dialect:

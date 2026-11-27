@@ -85,9 +85,21 @@ def test_session_factory_settings():
     assert database.SessionLocal.kw["expire_on_commit"] is False
 
 
-def test_base_has_naming_convention_and_no_tables():
+def test_base_has_naming_convention():
     assert database.Base.metadata.naming_convention["pk"] == "pk_%(table_name)s"
-    assert database.Base.metadata.tables == {}
+
+
+def test_database_module_alone_defines_no_tables():
+    """Tables belong in app.models; database.py must not define any.
+
+    Runs in a fresh process because other tests import app.models, which
+    registers tables on the shared Base.metadata.
+    """
+    code = "from app.core.database import Base; print(len(Base.metadata.tables))"
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=BACKEND_DIR, capture_output=True, text=True, check=True
+    )
+    assert result.stdout.strip() == "0"
 
 
 def test_importing_database_module_does_not_load_settings():

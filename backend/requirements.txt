@@ -2,6 +2,8 @@
 pydantic==2.14.4
 pydantic-settings==2.16.3
 python-dotenv==1.2.4
+email-validator==2.4.0  # required by Pydantic EmailStr
+tzdata==2026.6  # IANA time zone database; Windows has none built in (needed by zoneinfo)
 
 # ---- Database ----
 SQLAlchemy==2.1.9
