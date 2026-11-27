@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.client_ip import resolve_client_ip
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.ratelimit import LoginRateLimiter
@@ -56,6 +57,10 @@ def get_login_limiter() -> LoginRateLimiter:
     return LoginRateLimiter(s.login_max_failures_per_email, s.login_max_attempts_per_ip, s.login_window_minutes * 60)
 
 
-def client_ip(request: Request) -> str:
-    # Direct client address. Behind a proxy, a TRUSTED X-Forwarded-For must be used instead.
-    return request.client.host if request.client else "unknown"
+def client_ip(request: Request, settings: Settings) -> str:
+    """Client address for rate limiting; X-Forwarded-For only from TRUSTED_PROXIES (app/core/client_ip.py)."""
+    return resolve_client_ip(
+        request.client.host if request.client else None,
+        request.headers.getlist("x-forwarded-for"),
+        settings.trusted_proxy_networks,
+    )

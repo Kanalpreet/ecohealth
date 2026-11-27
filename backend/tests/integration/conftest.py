@@ -131,12 +131,16 @@ def limiter():
 def client(db_session, environment, limiter):
     from fastapi.testclient import TestClient
 
-    from app.api.deps import get_login_limiter
+    from app.api.deps import get_login_limiter, settings_dep
     from app.api.risk import get_environment
     from app.core.database import get_db
     from main import app
 
+    # TestClient calls FastAPI directly (/auth/...), not through the frontend's /api proxy,
+    # so the refresh cookie must use Path=/auth for its cookie jar to send it back.
+    test_settings = get_settings().model_copy(update={"refresh_cookie_path": "/auth"})
     app.dependency_overrides[get_db] = lambda: db_session
+    app.dependency_overrides[settings_dep] = lambda: test_settings
     app.dependency_overrides[get_login_limiter] = lambda: limiter
     app.dependency_overrides[get_environment] = lambda: environment
     try:

@@ -27,7 +27,7 @@ can re-hash old hashes when the parameters are raised later.
 
 ```
 login ──► access token (JWT, 30 min)  ── sent as  Authorization: Bearer <token>
-      └─► refresh token (random, 7 days) ── httpOnly cookie, path /auth
+      └─► refresh token (random, 7 days) ── httpOnly cookie, path /api/auth (REFRESH_COOKIE_PATH)
 ```
 
 - **Access token**: a signed JWT (HS256, secret `JWT_SECRET_KEY`, ≥ 32 characters)
@@ -36,7 +36,8 @@ login ──► access token (JWT, 30 min)  ── sent as  Authorization: Beare
   signature and expiry and loads the user (a deleted user's token stops working).
   The algorithm is fixed in code (no `alg` negotiation).
 - **Refresh token**: 48 random bytes (`secrets.token_urlsafe`), sent only as a cookie
-  that JavaScript cannot read (`HttpOnly`), limited to `/auth` paths, `SameSite=Lax`
+  that JavaScript cannot read (`HttpOnly`), limited to the auth paths (`REFRESH_COOKIE_PATH`,
+  see below), `SameSite=Lax`
   by default (not sent on cross-site POSTs), `Secure` configurable (must be on in
   production / HTTPS).
 - **Stored hashed**: the database keeps only the SHA-256 of a refresh token
@@ -62,9 +63,22 @@ In-process sliding windows (`backend/app/core/ratelimit.py`):
 
 Exceeding a limit returns **429** with `Retry-After`. **Limitation:** the counters live
 in one process's memory: they reset on restart and are not shared between several
-workers or servers; behind a proxy the client IP must come from a trusted
-`X-Forwarded-For` (not handled yet). A shared store (e.g. the database) is needed
-before production.
+workers or servers. A shared store (e.g. the database) is needed before production.
+
+**Client IP behind a proxy** (`backend/app/core/client_ip.py`). The browser reaches the
+API through a proxy (the Vite dev server, later Vercel/Render), so the TCP peer is the
+proxy, not the person. The proxy reports the real client in `X-Forwarded-For`, but
+anyone can send that header, so it is believed **only when the request comes from an
+address in `TRUSTED_PROXIES`** (default `localhost` = `127.0.0.1` and `::1`, i.e. the
+Vite dev proxy). The header is then read from the right: each trusted proxy appended
+the address it received the request from, so the right-most address that is not a
+trusted proxy is the client; anything further left was written by the client and is
+ignored. Requests from any other peer use the peer address and ignore the header.
+In production, set `TRUSTED_PROXIES` to the platform's proxy addresses/ranges (or
+leave it as `localhost` if none are known: then each proxy IP shares one limit, which
+is safe but stricter). Note: uvicorn has its own proxy-header handling
+(`--forwarded-allow-ips`, default `127.0.0.1`) using the same right-most rule; keep the
+two consistent.
 
 Login failures always return the same message (`Incorrect email or password`), and a
 dummy hash is verified for unknown emails so response times don't reveal which
@@ -116,6 +130,8 @@ emails exist. (Registration does reveal an existing email with 409: accepted for
 | `REFRESH_TOKEN_EXPIRE_DAYS` | 7 | refresh token lifetime |
 | `REFRESH_COOKIE_SECURE` | false | set **true** in production (HTTPS) |
 | `REFRESH_COOKIE_SAMESITE` | lax | `lax`, `strict` or `none` (`none` requires Secure) |
+| `REFRESH_COOKIE_PATH` | `/api/auth` | the auth path **as the browser sees it**. The frontend calls `/api/auth/...` through its same-origin proxy, which strips `/api` (docs/frontend.md). Set `/auth` only when calling the backend directly (e.g. Swagger at `:8000/docs`); the test client does this |
+| `TRUSTED_PROXIES` | `localhost` | comma-separated IPs/CIDR ranges (`localhost` = 127.0.0.1 and ::1) whose `X-Forwarded-For` is believed for the per-IP login limit; empty = never |
 | `CORS_ORIGINS` | `http://localhost:3000` | comma-separated allowed browser origins |
 | `LOGIN_MAX_FAILURES_PER_EMAIL` / `LOGIN_MAX_ATTEMPTS_PER_IP` / `LOGIN_WINDOW_MINUTES` | 5 / 20 / 15 | rate limiting |
 

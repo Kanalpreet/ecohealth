@@ -256,3 +256,61 @@ def test_login_rate_limit_per_ip(client, limiter):
     for _ in range(20):
         login(client, unique_email(), "whatever-password")
     assert login(client, unique_email()).status_code == 429
+
+
+# ---- frontend /api proxy: cookie path and trusted X-Forwarded-For (docs/auth.md) ----
+
+
+def test_refresh_cookie_uses_the_configured_path(client):
+    from app.api.deps import settings_dep
+    from main import app
+
+    email = unique_email()
+    register(client, email)
+    proxied = get_settings().model_copy(update={"refresh_cookie_path": "/api/auth"})
+    app.dependency_overrides[settings_dep] = lambda: proxied
+    header = set_cookie_header(login(client, email)).lower()
+    assert "path=/api/auth" in header and "httponly" in header
+
+
+def _peer_client(host: str):
+    from fastapi.testclient import TestClient
+
+    from main import app
+
+    return TestClient(app, client=(host, 50000))
+
+
+def _attempt(test_client, forwarded_for: str | None):
+    headers = {"X-Forwarded-For": forwarded_for} if forwarded_for else {}
+    body = {"email": unique_email(), "password": "whatever-password"}
+    return test_client.post("/auth/login", json=body, headers=headers).status_code
+
+
+def test_ip_limit_uses_forwarded_for_from_a_trusted_proxy(client):
+    from app.api.deps import get_login_limiter
+    from app.core.ratelimit import LoginRateLimiter
+    from main import app
+
+    small = LoginRateLimiter(max_failures_per_email=5, max_attempts_per_ip=2, window_seconds=900)
+    app.dependency_overrides[get_login_limiter] = lambda: small
+    via_proxy = _peer_client("127.0.0.1")  # e.g. the Vite dev proxy (default TRUSTED_PROXIES=localhost)
+
+    assert [_attempt(via_proxy, "203.0.113.5") for _ in range(2)] == [401, 401]
+    assert _attempt(via_proxy, "203.0.113.5") == 429  # that client is limited...
+    assert _attempt(via_proxy, "203.0.113.6") == 401  # ...another client behind the same proxy is not
+    # A forged left-most entry does not help: the proxy appended the real address last.
+    assert _attempt(via_proxy, "198.51.100.1, 203.0.113.5") == 429
+
+
+def test_ip_limit_ignores_forwarded_for_from_an_untrusted_peer(client):
+    from app.api.deps import get_login_limiter
+    from app.core.ratelimit import LoginRateLimiter
+    from main import app
+
+    small = LoginRateLimiter(max_failures_per_email=5, max_attempts_per_ip=2, window_seconds=900)
+    app.dependency_overrides[get_login_limiter] = lambda: small
+    direct = _peer_client("198.51.100.7")  # not a trusted proxy
+
+    assert [_attempt(direct, f"203.0.113.{n}") for n in (1, 2)] == [401, 401]
+    assert _attempt(direct, "203.0.113.3") == 429  # spoofing X-Forwarded-For does not reset the limit

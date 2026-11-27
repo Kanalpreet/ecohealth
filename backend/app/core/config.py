@@ -10,6 +10,7 @@ in print(), logs or validation error messages.
 """
 
 from functools import lru_cache
+from ipaddress import IPv4Network, IPv6Network, ip_network
 from pathlib import Path
 from typing import Literal
 
@@ -21,6 +22,26 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 ENV_FILE = BACKEND_DIR / ".env"
 
 REQUIRED_DB_SCHEME = "postgresql+psycopg://"
+
+IPNetwork = IPv4Network | IPv6Network
+_LOCALHOST_NETWORKS = ("127.0.0.1/32", "::1/128")
+
+
+def parse_trusted_proxies(value: str) -> tuple[IPNetwork, ...]:
+    """'localhost, 10.0.0.0/8' -> networks. 'localhost' means 127.0.0.1 and ::1. Empty = trust none."""
+    networks: list[IPNetwork] = []
+    for raw in value.split(","):
+        entry = raw.strip()
+        if not entry:
+            continue
+        if entry.lower() == "localhost":
+            networks.extend(ip_network(n) for n in _LOCALHOST_NETWORKS)
+            continue
+        try:
+            networks.append(ip_network(entry, strict=False))
+        except ValueError:
+            raise ValueError("TRUSTED_PROXIES must be comma-separated IP addresses, CIDR ranges or 'localhost'") from None
+    return tuple(networks)
 
 
 class ConfigurationError(RuntimeError):
@@ -64,14 +85,39 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=7, ge=1, le=90)
     refresh_cookie_secure: bool = False  # MUST be true in production (HTTPS)
     refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    # The path the BROWSER uses for the auth endpoints. The frontend calls the API through a
+    # same-origin /api proxy (Vite dev server / Vercel rewrite) that strips the prefix, so the
+    # browser sees /api/auth/... even though FastAPI serves /auth/... (docs/frontend.md).
+    refresh_cookie_path: str = "/api/auth"
     cors_origins: str = "http://localhost:3000"  # comma-separated
     login_max_failures_per_email: int = Field(default=5, ge=1, le=100)
     login_max_attempts_per_ip: int = Field(default=20, ge=1, le=1000)
     login_window_minutes: int = Field(default=15, ge=1, le=24 * 60)
+    # Comma-separated IPs/CIDR ranges of reverse proxies whose X-Forwarded-For header is
+    # believed (per-IP login limit). "localhost" = 127.0.0.1 and ::1 (the Vite dev proxy).
+    trusted_proxies: str = "localhost"
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def trusted_proxy_networks(self) -> tuple[IPNetwork, ...]:
+        return parse_trusted_proxies(self.trusted_proxies)
+
+    @field_validator("refresh_cookie_path")
+    @classmethod
+    def cookie_path_is_safe(cls, value: str) -> str:
+        value = value.strip()
+        if not value.startswith("/") or any(c in value for c in ';,"\\') or any(c.isspace() for c in value):
+            raise ValueError("REFRESH_COOKIE_PATH must be a URL path starting with '/', e.g. /api/auth")
+        return value.rstrip("/") or "/"
+
+    @field_validator("trusted_proxies")
+    @classmethod
+    def trusted_proxies_are_valid(cls, value: str) -> str:
+        parse_trusted_proxies(value)  # raises ValueError on a bad entry
+        return value
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod

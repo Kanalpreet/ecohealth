@@ -16,7 +16,8 @@ from app.services.auth import EmailTakenError, RefreshStatus
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 REFRESH_COOKIE = "ecohealth_refresh"
-REFRESH_COOKIE_PATH = "/auth"  # the cookie is only sent to /auth/* endpoints
+# Cookie path = settings.refresh_cookie_path (default /api/auth): the browser only sends
+# the cookie to the auth endpoints, as seen through the frontend's /api proxy.
 _INVALID_LOGIN = "Incorrect email or password"
 _INVALID_REFRESH = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session")
 
@@ -26,7 +27,7 @@ def set_refresh_cookie(response: Response, token: str, settings: SettingsDep) ->
         key=REFRESH_COOKIE,
         value=token,
         max_age=settings.refresh_token_expire_days * 24 * 3600,
-        path=REFRESH_COOKIE_PATH,
+        path=settings.refresh_cookie_path,
         httponly=True,  # not readable from JavaScript
         secure=settings.refresh_cookie_secure,
         samesite=settings.refresh_cookie_samesite,
@@ -35,7 +36,7 @@ def set_refresh_cookie(response: Response, token: str, settings: SettingsDep) ->
 
 def clear_refresh_cookie(response: Response, settings: SettingsDep) -> None:
     response.delete_cookie(
-        key=REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, httponly=True,
+        key=REFRESH_COOKIE, path=settings.refresh_cookie_path, httponly=True,
         secure=settings.refresh_cookie_secure, samesite=settings.refresh_cookie_samesite,
     )
 
@@ -61,7 +62,7 @@ def login(
     settings: SettingsDep,
     limiter: Annotated[LoginRateLimiter, Depends(get_login_limiter)],
 ) -> TokenResponse:
-    ip = client_ip(request)
+    ip = client_ip(request, settings)
     wait = limiter.retry_after(body.email, ip)
     if wait is not None:
         raise HTTPException(
