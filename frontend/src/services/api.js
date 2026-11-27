@@ -378,27 +378,51 @@ export function deleteRoutine(memberId, routineId) {
 // ---------------------------------------------------------------------------
 
 /**
- * GET /members/{id}/risk -> { member_id, member_name, disclaimer,
- *   location: grid-cell centre (~5 km, never the exact home) | null,
- *   assessment: { score 0-100, level, factors, missing factors, ... } }
+ * GET /members/{id}/risk -> current risk for one member.
+ * { member_id, member_name, disclaimer,
+ *   location: { latitude, longitude, grid_degrees } grid-cell centre (~5 km) | null,
+ *   assessment: {
+ *     engine_version, context: "home", at_time (UTC),
+ *     score 0-100, level, top_factors: Factor[],
+ *     factors: [{ factor, value, sub_score 0-1, weight, contribution_pct }] (only factors with data),
+ *     contributions: { factor: % } (sums to 100 when score > 0),
+ *     inputs: { aqi, aqi_category ("Very poor"...), aqi_dominant, aqi_basis ("24h_mean"|"hourly"),
+ *               pm2_5, pm10 (µg/m³), temperature_c, relative_humidity_pct, heat_metric_c, heat_basis,
+ *               uv_index, temperature_swing_c, elevation_m, weather_basis } (any may be absent),
+ *     missing_factors: [{ factor, reason }], not_applied: [{ factor, reason }] (altitude at home),
+ *     age_modifier, sensitivity, condition_multipliers: { factor: x }, unknown_conditions,
+ *     data_sources: { provider: { source: "live"|"cache"|"stale", fetched_at } },
+ *     stale_providers: string[], warnings: string[] } }
+ * 404 = not your member; 409 = no home location; 503 = no environmental data.
  */
 export function getMemberRisk(memberId) {
   return request(`/members/${encodeURIComponent(memberId)}/risk`)
 }
 
 /**
- * GET /members/{id}/risk/hourly -> { member_id, member_name, disclaimer, timezone,
- *   hourly: [{ time, time_local, score, level, ... }] (next 24 h),
- *   safe_windows: [...], routines: [routine checks], warnings: string[] }
+ * GET /members/{id}/risk/hourly -> the next 24 hours for one member.
+ * { member_id, member_name, disclaimer, timezone,
+ *   hourly: [{ time (UTC hour start), time_local (with offset), score, level, top_factors, missing_factors }],
+ *   safe_windows: [{ start, end (UTC, exclusive), start_local, end_local, timezone, hours, worst_level }]
+ *     (consecutive hours at Low or Moderate),
+ *   routines: [{ activity, start_time "HH:MM:SS", days_of_week, status: "ok"|"unsafe"|"no_forecast",
+ *     next_occurrence_local, next_occurrence_utc, score | null, level | null, top_factors }],
+ *   warnings: string[] }
+ * Hourly scores use hourly AQI, so they can differ from the current score (24-hour mean AQI).
  */
 export function getMemberHourlyRisk(memberId) {
   return request(`/members/${encodeURIComponent(memberId)}/risk/hourly`)
 }
 
 /**
- * GET /family/risk -> { disclaimer, generated_at, timezone, location, data_sources: {provider: {...}},
- *   warnings: string[], members: [{ member_id, name, age, score, level, top_factors,
- *   missing_factors, next_safe_window | null, unsafe_routines: string[] }] }
+ * GET /family/risk -> one card per member, all from ONE environment snapshot.
+ * { disclaimer, generated_at (UTC), timezone, location (grid-cell centre) | null,
+ *   data_sources: { provider: { source: "live"|"cache"|"stale", fetched_at, expires_at } },
+ *   warnings: string[],
+ *   members: [{ member_id, name, age, score, level, top_factors, missing_factors: Factor[],
+ *     next_safe_window: SafeWindow | null, unsafe_routines: string[] (activity names) }] }
+ * Not included: environment values (use getMemberRisk(...).assessment.inputs), conditions
+ * (use listMembers) and routine times (use listRoutines).
  */
 export function getFamilyRisk() {
   return request('/family/risk')

@@ -5,7 +5,6 @@ import { PageSpinner } from '../components/ui/Spinner'
 import { ProtectedRoute, PublicOnlyRoute } from './guards'
 import { LoginPage } from '../pages/LoginPage'
 import { RegisterPage } from '../pages/RegisterPage'
-import { DashboardPage } from '../pages/DashboardPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { RouteErrorPage } from '../pages/RouteErrorPage'
 import { RootLayout } from './RootLayout'
@@ -47,7 +46,8 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'dashboard', lazy: lazyPage(() => import('../pages/DashboardPage'), 'DashboardPage') },
+              { path: 'dashboard/:memberId', lazy: lazyPage(() => import('../pages/app/MemberDetailPage'), 'MemberDetailPage') },
               { path: 'family', lazy: lazyPage(() => import('../pages/app/FamilyPage'), 'FamilyPage') },
               { path: 'map', lazy: lazyPage(() => import('../pages/app/MapPage'), 'MapPage') },
               { path: 'settings', lazy: lazyPage(() => import('../pages/app/SettingsPage'), 'SettingsPage') },

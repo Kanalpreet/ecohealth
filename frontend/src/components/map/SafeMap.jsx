@@ -6,7 +6,7 @@ import { MapFallback } from './MapFallback'
 const MapView = lazy(() => import('./MapView'))
 
 /** Catches a failed lazy import (or any map render error) so only the map area changes. */
-class MapErrorBoundary extends Component {
+export class MapErrorBoundary extends Component {
   constructor(props) {
     super(props)
     this.state = { error: null }
