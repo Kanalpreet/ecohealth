@@ -23,6 +23,21 @@ All three tables have `created_at` and `updated_at` (`timestamptz`, default `now
 The `env_cache` table (environmental data cache, one row per provider per grid cell,
 no user data) is described in [caching.md](caching.md).
 
+### refresh_tokens (authentication, see [auth.md](auth.md))
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users.id | indexed, `ON DELETE CASCADE` (deleting a user deletes their tokens) |
+| `token_hash` | varchar(64) | **SHA-256 of the token, never the token**; unique (lookup index) |
+| `family_id` | UUID | indexed; all tokens rotated from one login; reuse of an old token revokes the family |
+| `expires_at` | timestamptz | indexed (cleanup) |
+| `revoked_at` | timestamptz | NULL while usable |
+| `created_at` | timestamptz | `now()` |
+
+RLS enabled (no policies). `DELETE /me` removes the user; members, routines and
+refresh tokens cascade in PostgreSQL.
+
 - **Deleting a user deletes their family members and their routines** (PostgreSQL
   `ON DELETE CASCADE`; the ORM uses `passive_deletes=True` so PostgreSQL does it).
 - **`updated_at` trigger**: `public.set_updated_at()` runs `BEFORE UPDATE` on every

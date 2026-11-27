@@ -24,7 +24,8 @@ altitude) into personalised climate-health awareness for a user and their family
 
 Key docs: [docs/database.md](docs/database.md), [docs/data-model.md](docs/data-model.md),
 [docs/configuration.md](docs/configuration.md), [docs/environment-data.md](docs/environment-data.md),
-[docs/caching.md](docs/caching.md), [docs/risk-engine.md](docs/risk-engine.md).
+[docs/caching.md](docs/caching.md), [docs/risk-engine.md](docs/risk-engine.md),
+[docs/auth.md](docs/auth.md).
 
 Environmental data sources: **Open-Meteo** (weather, air quality, elevation; no key)
 and **OpenAQ v3** (ground stations; optional `OPENAQ_API_KEY`). **NASA FIRMS / fire
@@ -38,7 +39,14 @@ Risk engine (`backend/app/services/risk/`, ENGINE_VERSION in `risk_config.py`):
 `assess(member, snapshot)`, `hourly_assessment`, `safe_windows`, `check_routines`.
 Deterministic Python only; every threshold lives in `risk_config.py` with its source;
 changing any value means bumping `ENGINE_VERSION`. Altitude counts only in the
-`travel` context. Missing data is excluded and reported, never scored as 0.
+`travel` context (trip-level: never in hourly scores or safe windows). Missing data is excluded and reported, never scored as 0.
+
+Auth (`docs/auth.md`): our own FastAPI auth, **not Supabase Auth**. Argon2id password
+hashes (pwdlib), 30-min JWT access tokens (Bearer), 7-day refresh tokens in an httpOnly
+cookie, stored hashed, rotated, reuse revokes the family. Every route touching user
+data depends on `get_current_user`, and every query is scoped to the owner: another
+user's resources return **404**. Risk APIs (`/members/{id}/risk`, `/risk/hourly`,
+`/family/risk`) always include the disclaimer and return 409 without a home location.
 
 ## Run on Windows (PowerShell)
 
