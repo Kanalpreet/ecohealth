@@ -20,7 +20,8 @@ altitude) into personalised climate-health awareness for a user and their family
 - Backend: Python 3.12, **FastAPI**, **Pydantic** / Pydantic Settings
 - Database: **Supabase PostgreSQL**, **SQLAlchemy 2.x**, Psycopg 3, **Alembic**
 - Tests: **pytest** (`unit`, `integration` and `external` markers)
-- Later: Next.js + TypeScript + Tailwind frontend, LangGraph, Groq (Ollama fallback), ChromaDB, Langfuse
+- Frontend: Vite + React (plain JavaScript) + Tailwind, see the Frontend section below
+- Later: LangGraph, Groq (Ollama fallback), ChromaDB, Langfuse
 
 Key docs: [docs/database.md](docs/database.md), [docs/data-model.md](docs/data-model.md),
 [docs/configuration.md](docs/configuration.md), [docs/environment-data.md](docs/environment-data.md),
@@ -77,6 +78,14 @@ Risk engine demo (3 family members x 4 scenarios; deterministic, no LLM):
 backend\.venv\Scripts\python.exe scripts\assess_risk.py
 ```
 
+## Frontend
+
+The web app is in `frontend/` (Vite + React, **plain JavaScript, no TypeScript**). Read
+[frontend/CLAUDE.md](frontend/CLAUDE.md) before changing it; the design is in
+[docs/frontend.md](docs/frontend.md). The browser calls same-origin `/api/*` (Vite proxy in
+dev, Vercel rewrite in production), so the refresh cookie path is `/api/auth`
+(`REFRESH_COOKIE_PATH`). Run: `cd frontend; npm run dev` → http://localhost:5173.
+
 ## Rules
 
 1. **No Docker** (or Docker Compose).
@@ -91,6 +100,8 @@ backend\.venv\Scripts\python.exe scripts\assess_risk.py
 10. **Schema changes only through Alembic migrations** (reviewed by hand; never `create_all()`).
 11. **Update docs after each major feature.**
 12. **Don't start Travel Mode before Home Mode passes end-to-end testing.**
+13. **Never run git commit, git push, or create pull requests; developers commit manually.**
+14. **Never add Co-Authored-By lines or 'Generated with Claude Code' text anywhere.**
 
 Also (from design.md): never add AI co-authors or `Co-authored-by:` trailers, and
 don't commit or push unless the owner asks.
