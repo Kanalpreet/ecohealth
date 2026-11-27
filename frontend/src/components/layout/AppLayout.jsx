@@ -7,6 +7,8 @@ import { useMotionSafe } from '../../hooks/useMotionSafe'
 import { cn } from '../../lib/cn'
 import { initialOf } from '../../lib/family'
 import { formatCoords, userHome } from '../../lib/geo'
+import { loadAlertsSeen } from '../../lib/trips'
+import { useAlertsFeed } from '../../hooks/useTripsAlerts'
 import { Logo } from '../public/Logo'
 
 const PAGE_ENTER = {
@@ -19,11 +21,38 @@ const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/family', label: 'Family', icon: Users },
   { to: '/map', label: 'Risk Map', short: 'Map', icon: MapPinned },
-  { label: 'Trips', icon: Plane, soon: true },
-  { label: 'Alerts', icon: Bell, soon: true },
+  { to: '/trips', label: 'Trips', icon: Plane },
+  { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
-const TABS = NAV.filter((n) => ['/dashboard', '/family', '/map', '/settings'].includes(n.to))
+// Mobile tab bar: five destinations; Settings is the gear in the mobile topbar.
+const TABS = NAV.filter((n) => ['/dashboard', '/family', '/map', '/trips', '/alerts'].includes(n.to))
+
+/**
+ * Topbar bell: number of alerts newer than the last visit to /alerts on this device
+ * (first page only, shown as "9+" above 9). Hidden in Preview mode and on errors.
+ */
+function AlertsBell() {
+  const feed = useAlertsFeed(null)
+  const first = feed.data?.pages?.[0]
+  if (!first || first.preview) return null
+  const seen = loadAlertsSeen()
+  const count = first.data.items.filter((a) => !seen || a.created_at > seen).length
+  return (
+    <Link
+      to="/alerts"
+      className="relative flex size-11 shrink-0 items-center justify-center rounded-pill bg-surface text-ink shadow-card ring-1 ring-line hover:bg-subtle"
+      aria-label={count ? `Alerts, ${count} new` : 'Alerts'}
+    >
+      <Bell aria-hidden="true" size={18} />
+      {count > 0 && (
+        <span aria-hidden="true" className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-pill bg-danger px-1 text-[0.7rem] font-bold text-white">
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </Link>
+  )
+}
 
 function sideClass({ isActive }) {
   return cn(
@@ -157,15 +186,25 @@ export function AppLayout() {
       {/* ---- Topbar ---- */}
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur">
         <div className="flex h-16 items-center justify-between gap-3 px-gutter sm:px-6">
-          <Logo to="/dashboard" className="text-lg lg:hidden" />
-          <div className="flex min-w-0 items-center gap-2 rounded-pill bg-surface px-3 py-1.5 text-sm shadow-card ring-1 ring-line">
-            <MapPin aria-hidden="true" size={16} className="shrink-0 text-accent" />
-            <span className="truncate">
-              <span className="hidden font-semibold sm:inline">Home: </span>
-              <span className="tabular-nums">{home ? formatCoords(home) : 'Not set'}</span>
-            </span>
-            <Link to="/settings#home-area" className="shrink-0 font-semibold text-accent underline-offset-4 hover:underline">
-              Change<span className="sr-only"> home area</span>
+          <Logo to="/dashboard" className="shrink-0 text-lg lg:hidden [&>span]:hidden sm:[&>span]:inline" />
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2 rounded-pill bg-surface px-3 py-1.5 text-sm shadow-card ring-1 ring-line">
+              <MapPin aria-hidden="true" size={16} className="shrink-0 text-accent" />
+              <span className="truncate">
+                <span className="hidden font-semibold sm:inline">Home: </span>
+                <span className="tabular-nums">{home ? formatCoords(home) : 'Not set'}</span>
+              </span>
+              <Link to="/settings#home-area" className="shrink-0 font-semibold text-accent underline-offset-4 hover:underline">
+                Change<span className="sr-only"> home area</span>
+              </Link>
+            </div>
+            <AlertsBell />
+            <Link
+              to="/settings"
+              className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-surface text-ink shadow-card ring-1 ring-line hover:bg-subtle lg:hidden"
+              aria-label="Settings"
+            >
+              <Settings aria-hidden="true" size={18} />
             </Link>
           </div>
         </div>
@@ -179,7 +218,7 @@ export function AppLayout() {
 
       {/* ---- Mobile bottom tab bar ---- */}
       <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur lg:hidden">
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {TABS.map((item) => {
             const Icon = item.icon
             return (

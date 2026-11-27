@@ -427,3 +427,99 @@ export function getMemberHourlyRisk(memberId) {
 export function getFamilyRisk() {
   return request('/family/risk')
 }
+
+// ---------------------------------------------------------------------------
+// Trips and Alerts (docs/api-contract-trips-alerts.md, DRAFT contract).
+// These endpoints may not exist yet: isNotImplemented(error) tells the UI to switch
+// to Preview mode (sample data from lib/previewData.js). Exact field names below are
+// the frontend's reading of the draft; keep this block and previewData.js in sync.
+// Dates are "YYYY-MM-DD"; timestamps are ISO 8601 UTC.
+// ---------------------------------------------------------------------------
+
+/**
+ * True when an endpoint is missing on the backend (404 Not Found for an unknown route,
+ * or 501 Not Implemented). Only use it on calls that can't 404 for other reasons
+ * (list endpoints, /me/alert-settings), never on /trips/{id}.
+ */
+export function isNotImplemented(error) {
+  return error instanceof ApiError && (error.status === 404 || error.status === 501)
+}
+
+/**
+ * GET /trips -> TripSummary[]:
+ *   { id, name, start_date, end_date, stops: [{ place, elevation_m | null }], member_ids: string[] }
+ */
+export function listTrips() {
+  return request('/trips')
+}
+
+/**
+ * POST /trips  body: { name, trip_type: "work"|"holiday"|"trek"|"pilgrimage"|"beach",
+ *   start_date, end_date, member_ids: string[],
+ *   stops: [{ place, lat, lon, arrive_date, leave_date }] (in travel order) }
+ * -> 201 Trip: { id, name, trip_type, start_date, end_date, member_ids,
+ *   stops: [{ place, lat, lon, elevation_m | null, arrive_date, leave_date }] }
+ */
+export function createTrip(body) {
+  return request('/trips', { method: 'POST', body })
+}
+
+/** GET /trips/{id} -> Trip (see createTrip). 404 = not your trip. */
+export function getTrip(tripId) {
+  return request(`/trips/${encodeURIComponent(tripId)}`)
+}
+
+/** PATCH /trips/{id}  body: any Trip fields from createTrip -> Trip. */
+export function updateTrip(tripId, changes) {
+  return request(`/trips/${encodeURIComponent(tripId)}`, { method: 'PATCH', body: changes })
+}
+
+/** DELETE /trips/{id} -> 204. */
+export function deleteTrip(tripId) {
+  return request(`/trips/${encodeURIComponent(tripId)}`, { method: 'DELETE' })
+}
+
+/**
+ * GET /trips/{id}/plan -> Trip Health Plan:
+ *   { trip_id, generated_at, disclaimer,
+ *     travellers: [{ member_id, level, score }],
+ *     stops: [{ place, elevation_m | null, altitude_gain_m | null, level, key_risks: string[] }],
+ *     acclimatisation_notes: string[],
+ *     packing_checklist: string[],
+ *     warnings: string[],
+ *     hospitals: [{ name, distance_km, lat, lon, phone | null }] }
+ */
+export function getTripPlan(tripId) {
+  return request(`/trips/${encodeURIComponent(tripId)}/plan`)
+}
+
+/**
+ * GET /alerts?type=air|weather|family|travel&cursor=...
+ * -> { items: [{ id, created_at, type, level, title, body, member_ids: string[] }], next_cursor: string | null }
+ * Newest first. Omit `type` for all types.
+ */
+export function listAlerts({ type, cursor } = {}) {
+  const params = new URLSearchParams()
+  if (type) params.set('type', type)
+  if (cursor) params.set('cursor', cursor)
+  const qs = params.toString()
+  return request(`/alerts${qs ? `?${qs}` : ''}`)
+}
+
+/** POST /alerts/{id}/feedback  body: { useful: boolean } -> 204 (or 200). */
+export function sendAlertFeedback(alertId, useful) {
+  return request(`/alerts/${encodeURIComponent(alertId)}/feedback`, { method: 'POST', body: { useful } })
+}
+
+/**
+ * GET /me/alert-settings -> { daily_brief_email: boolean, browser_push: boolean,
+ *   quiet_start: "HH:MM", quiet_end: "HH:MM" } (local times in User.timezone)
+ */
+export function getAlertSettings() {
+  return request('/me/alert-settings')
+}
+
+/** PATCH /me/alert-settings  body: any of the fields above -> the full settings. */
+export function updateAlertSettings(changes) {
+  return request('/me/alert-settings', { method: 'PATCH', body: changes })
+}

@@ -16,6 +16,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { useAuth } from '../../hooks/useAuth'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { useUpdateMe } from '../../hooks/useFamily'
+import { useAlertSettings, useUpdateAlertSettings } from '../../hooks/useTripsAlerts'
 import { useToast } from '../../hooks/useToast'
 import { applyServerErrors } from '../../lib/formErrors'
 import { formatCoords, roundPoint, timezoneOptions, userHome } from '../../lib/geo'
@@ -180,26 +181,109 @@ const ALERT_ROWS = [
   { icon: Clock, label: 'Quiet hours (10 PM – 6 AM)' },
 ]
 
+function Switch({ checked, onChange, label, disabled }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-6 w-11 shrink-0 rounded-pill transition-colors disabled:opacity-60',
+        checked ? 'bg-brand' : 'bg-line-strong/50',
+      )}
+    >
+      <span className={cn('absolute top-0.5 size-5 rounded-full bg-surface shadow-card transition-transform', checked ? 'translate-x-[1.375rem]' : 'translate-x-0.5')} />
+    </button>
+  )
+}
+
+/**
+ * Alerts: uses GET/PATCH /me/alert-settings when the backend has it; while it answers
+ * 404/501 the rows stay disabled with "Coming soon". Browser push permission is NOT
+ * requested here; the switch only stores the preference (push arrives with backend work).
+ */
 function AlertsSection() {
+  const { toast } = useToast()
+  const settings = useAlertSettings()
+  const update = useUpdateAlertSettings()
+  const s = settings.data?.data
+  const available = settings.isSuccess && !settings.data.preview && s
+
+  async function save(changes) {
+    try {
+      await update.mutateAsync(changes)
+      toast({ tone: 'success', title: 'Alert settings saved' })
+    } catch (error) {
+      toast({ tone: 'error', title: "Couldn't save alert settings", description: error.message })
+    }
+  }
+
+  if (settings.isLoading) {
+    return (
+      <Section icon={Bell} title="Alerts" description="Choose how and when you want to get updates.">
+        <Skeleton className="h-32 w-full" />
+      </Section>
+    )
+  }
+
+  if (!available) {
+    return (
+      <Section icon={Bell} title="Alerts" description="Choose how and when you want to get updates.">
+        {settings.isError && <p className="mb-2 text-sm text-danger">Alert settings didn't load: {settings.error.message}</p>}
+        <ul className="flex flex-col divide-y divide-line">
+          {ALERT_ROWS.map(({ icon: Icon, label }) => (
+            <li key={label} className="flex items-center gap-3 py-3 opacity-70">
+              <Icon aria-hidden="true" size={18} className="text-muted" />
+              <span className="flex-1 text-sm text-ink">{label}</span>
+              <Badge>Coming soon</Badge>
+              <span
+                role="switch"
+                aria-checked="false"
+                aria-disabled="true"
+                aria-label={`${label} (coming soon)`}
+                className="relative inline-flex h-6 w-11 cursor-not-allowed rounded-pill bg-line-strong/40"
+              >
+                <span className="absolute top-0.5 left-0.5 size-5 rounded-full bg-surface shadow-card" />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+    )
+  }
+
   return (
     <Section icon={Bell} title="Alerts" description="Choose how and when you want to get updates.">
       <ul className="flex flex-col divide-y divide-line">
-        {ALERT_ROWS.map(({ icon: Icon, label }) => (
-          <li key={label} className="flex items-center gap-3 py-3 opacity-70">
-            <Icon aria-hidden="true" size={18} className="text-muted" />
-            <span className="flex-1 text-sm text-ink">{label}</span>
-            <Badge>Coming soon</Badge>
-            <span
-              role="switch"
-              aria-checked="false"
-              aria-disabled="true"
-              aria-label={`${label} (coming soon)`}
-              className="relative inline-flex h-6 w-11 cursor-not-allowed rounded-pill bg-line-strong/40"
-            >
-              <span className="absolute top-0.5 left-0.5 size-5 rounded-full bg-surface shadow-card" />
+        <li className="flex items-center gap-3 py-3">
+          <Mail aria-hidden="true" size={18} className="text-muted" />
+          <span className="flex-1 text-sm text-ink">Daily brief by email</span>
+          <Switch checked={s.daily_brief_email} onChange={(v) => save({ daily_brief_email: v })} label="Daily brief by email" disabled={update.isPending} />
+        </li>
+        <li className="flex items-center gap-3 py-3">
+          <BellRing aria-hidden="true" size={18} className="text-muted" />
+          <span className="flex-1 text-sm text-ink">
+            Browser notifications
+            <span className="block text-xs text-muted">Your browser will ask for permission when notifications launch.</span>
+          </span>
+          <Switch checked={s.browser_push} onChange={(v) => save({ browser_push: v })} label="Browser notifications" disabled={update.isPending} />
+        </li>
+        <li className="flex flex-col gap-3 py-3 sm:flex-row sm:items-end">
+          <span className="flex flex-1 items-center gap-3 text-sm text-ink">
+            <Clock aria-hidden="true" size={18} className="text-muted" />
+            <span>
+              Quiet hours
+              <span className="block text-xs text-muted">No notifications during this time (your time zone).</span>
             </span>
-          </li>
-        ))}
+          </span>
+          <div className="grid grid-cols-2 gap-2 sm:w-64">
+            <Input label="From" type="time" defaultValue={s.quiet_start} onBlur={(e) => e.target.value && e.target.value !== s.quiet_start && save({ quiet_start: e.target.value })} />
+            <Input label="To" type="time" defaultValue={s.quiet_end} onBlur={(e) => e.target.value && e.target.value !== s.quiet_end && save({ quiet_end: e.target.value })} />
+          </div>
+        </li>
       </ul>
     </Section>
   )

@@ -322,13 +322,13 @@ All backend calls go through `services/api.js`; server data uses TanStack Query
 
 ### Layout and routing
 - **Desktop (1024 px and up):** a left sidebar.
-  - Items: Dashboard, Family, Risk Map, Trips and Alerts, and Settings. Risk Map is a
-    placeholder until F5; Trips and Alerts are disabled with a "Soon" tag because the
-    backend has no support yet.
+  - Items: Dashboard, Family, Risk Map, Trips, Alerts and Settings. Trips and Alerts
+    open real pages that fall back to Preview mode (see "Trips and Alerts" below).
   - A user menu at the bottom (Settings, Log out); Escape or a click outside closes it.
 - **Topbar:** "Home:" with the rounded coordinates and a Change link
   (`/settings#home-area`). The backend stores no place name, so coordinates are shown.
-- **Mobile:** a compact topbar and a bottom tab bar (Dashboard, Family, Map, Settings).
+- **Mobile:** a compact topbar (logo mark, home, alerts bell, Settings gear) and a bottom
+  tab bar with five tabs (Dashboard, Family, Map, Trips, Alerts).
 - **Guards:**
   - App routes sit behind `ProtectedRoute requireHome`: logged-out visitors go to
     `/login?next=…`, and users without a home location go to `/onboarding` first.
@@ -380,7 +380,8 @@ All backend calls go through `services/api.js`; server data uses TanStack Query
 ### Settings (`/settings`)
 - **Profile:** name and time zone; email read-only.
 - **Home area:** a map preview and the same picker.
-- **Alerts:** shown disabled with "Coming soon".
+- **Alerts:** wired to `GET/PATCH /me/alert-settings` (see "Trips and Alerts" below);
+  disabled with "Coming soon" while the endpoint is missing.
 - **Download my data:** `GET /me/export`, saved as JSON.
 - **Delete account:** requires typing DELETE, then navigates to `/` and logs out.
 - **Log out.**

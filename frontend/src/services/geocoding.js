@@ -19,11 +19,12 @@ async function query(name, { countryCode, signal }) {
     lat: r.latitude,
     lon: r.longitude,
     timezone: r.timezone || null,
+    elevation_m: typeof r.elevation === 'number' ? r.elevation : null,
   }))
 }
 
 /**
- * searchPlaces('Saket') -> [{ id, name, region, lat, lon, timezone }]
+ * searchPlaces('Saket') -> [{ id, name, region, lat, lon, timezone, elevation_m }]
  * Queries shorter than 2 characters return [] without a request.
  */
 export async function searchPlaces(text, { signal } = {}) {

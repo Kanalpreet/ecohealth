@@ -99,7 +99,9 @@ dev, Vercel rewrite in production), so the refresh cookie path is `/api/auth`
 9. **Timestamps are `timestamptz` in UTC; routine times are local times interpreted in `User.timezone`.**
 10. **Schema changes only through Alembic migrations** (reviewed by hand; never `create_all()`).
 11. **Update docs after each major feature.**
-12. **Don't start Travel Mode before Home Mode passes end-to-end testing.**
+12. Don't build real Travel Mode functionality (backend logic, live trip alerts) before Home Mode
+    passes end-to-end testing. Frontend screens in Preview mode (clearly labelled sample data)
+    are allowed.
 13. **Never run git commit, git push, or create pull requests; developers commit manually.**
 14. **Never add Co-Authored-By lines or 'Generated with Claude Code' text anywhere.**
 
