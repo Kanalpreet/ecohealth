@@ -21,7 +21,8 @@ users 1 ──── * family_members 1 ──── * routines
 | name | varchar(100) | required |
 | email | varchar(254) | required, **unique**; lowercase enforced by schema **and** `CHECK (email = lower(email))` |
 | password_hash | varchar(255) | required, **internal only**, never in any schema |
-| home_lat / home_lon | float | optional; ±90 / ±180; both or neither; rounded to 2 decimals (~1.1 km) by the schemas (the column itself does not round) |
+| home_lat | numeric(5,2) | optional; CHECK −90…90; both-or-neither with home_lon |
+| home_lon | numeric(6,2) | optional; CHECK −180…180 |
 | timezone | varchar(64) | required; IANA name, default `'Asia/Kolkata'`; validated by the schemas with `zoneinfo` |
 | consent_at | timestamptz | optional, no default (NULL until consent); set by the server only |
 | created_at / updated_at | timestamptz | `now()` defaults; `updated_at` refreshed on ORM updates |
@@ -58,6 +59,18 @@ users 1 ──── * family_members 1 ──── * routines
 - `Routine.start_time` is a plain local clock time ("07:30 on weekdays"); it stays
   07:30 across daylight-saving changes and is interpreted in the user's time zone.
   Inputs with a UTC offset (e.g. `07:30+05:30`) are rejected.
+
+## Coordinate rounding
+
+Home coordinates are stored rounded to **2 decimal places (~1.1 km)**. Environmental
+data (air quality, temperature, UV) is grid-based at kilometre scale, and coarser
+storage avoids keeping an exact home location (design.md §6).
+
+- Schemas parse coordinates as `Decimal`, check the range on the raw value, then
+  round **half-up** (`28.615` → `28.62`). Values like `90.004` are rejected, not rounded.
+- The `numeric(5,2)` / `numeric(6,2)` columns enforce the precision in PostgreSQL too,
+  so writes that bypass the schemas cannot store more precise locations.
+- `UserRead` returns them as JSON numbers (`28.61`), not strings.
 
 ## Design decisions
 

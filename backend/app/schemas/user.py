@@ -2,6 +2,7 @@
 
 import uuid
 import zoneinfo
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 from typing import Annotated, Self
 
@@ -29,8 +30,11 @@ from app.core.constants import (
 )
 from app.schemas.common import InputSchema, Name, NotBool, ReadSchema, reject_explicit_nulls
 
-Latitude = Annotated[float, NotBool, Field(ge=LAT_MIN, le=LAT_MAX)]
-Longitude = Annotated[float, NotBool, Field(ge=LON_MIN, le=LON_MAX)]
+# Decimal (not float) so rounding is exact and matches the Numeric(…, 2) columns.
+# Ranges are checked on the raw value, then rounded (see _round_coordinate).
+Latitude = Annotated[Decimal, NotBool, Field(ge=LAT_MIN, le=LAT_MAX, allow_inf_nan=False)]
+Longitude = Annotated[Decimal, NotBool, Field(ge=LON_MIN, le=LON_MAX, allow_inf_nan=False)]
+_COORDINATE_QUANTUM = Decimal(1).scaleb(-HOME_COORDINATE_DECIMALS)  # Decimal("0.01")
 
 
 @lru_cache
@@ -54,8 +58,9 @@ TimeZoneName = Annotated[
 ]
 
 
-def _round_coordinate(value: float | None) -> float | None:
-    return None if value is None else round(value, HOME_COORDINATE_DECIMALS)
+def _round_coordinate(value: Decimal | None) -> Decimal | None:
+    # Half-up rounding to 2 decimals (~1.1 km); e.g. 28.615 -> 28.62.
+    return None if value is None else value.quantize(_COORDINATE_QUANTUM, rounding=ROUND_HALF_UP)
 
 
 class UserCreate(InputSchema):

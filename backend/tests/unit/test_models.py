@@ -5,7 +5,7 @@ import uuid
 from datetime import time
 
 import pytest
-from sqlalchemy import DateTime, Uuid, inspect
+from sqlalchemy import DateTime, Numeric, Uuid, inspect
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.mutable import MutableList
@@ -115,6 +115,14 @@ def test_user_optional_fields_are_nullable():
     table = User.__table__
     for name in ("home_lat", "home_lon", "consent_at"):
         assert table.c[name].nullable is True
+
+
+@pytest.mark.parametrize(("column", "precision"), [("home_lat", 5), ("home_lon", 6)])
+def test_home_coordinates_are_numeric_with_two_decimals(column, precision):
+    col_type = User.__table__.c[column].type
+    assert isinstance(col_type, Numeric)
+    assert (col_type.precision, col_type.scale) == (precision, 2)
+    assert f"{column} NUMERIC({precision}, 2)" in ddl(User)
 
 
 def test_user_timezone_column_defaults_to_asia_kolkata():

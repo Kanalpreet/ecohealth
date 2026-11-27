@@ -1,6 +1,7 @@
 """Unit tests for Pydantic schemas. All data is synthetic."""
 
 import uuid
+from decimal import Decimal
 from datetime import UTC, datetime, time
 
 import pytest
@@ -81,7 +82,27 @@ def test_user_create_coordinate_boundaries(lat, lon, ok):
 
 def test_user_create_rounds_coordinates_to_two_decimals():
     user = user_create(home_lat=28.61394, home_lon=77.20902)
-    assert (user.home_lat, user.home_lon) == (28.61, 77.21)
+    assert (user.home_lat, user.home_lon) == (Decimal("28.61"), Decimal("77.21"))
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [(28.615, "28.62"), ("28.625", "28.63"), (-28.615, "-28.62"), (89.996, "90.00"), (10, "10.00")],
+)
+def test_coordinate_rounding_is_half_up_and_exact(raw, expected):
+    assert user_create(home_lat=raw, home_lon=0).home_lat == Decimal(expected)
+
+
+@pytest.mark.parametrize("bad", [float("inf"), float("-inf"), "abc", "90.001"])
+def test_coordinates_reject_infinity_garbage_and_out_of_range_strings(bad):
+    with pytest.raises(ValidationError):
+        user_create(home_lat=bad, home_lon=0)
+
+
+def test_user_read_returns_coordinates_as_json_numbers():
+    read = UserRead.model_validate(make_user())
+    assert isinstance(read.home_lat, float)
+    assert '"home_lat":28.61' in read.model_dump_json()
 
 
 @pytest.mark.parametrize("coords", [{"home_lat": 10.0}, {"home_lon": 10.0}])
@@ -105,7 +126,7 @@ def test_user_update_partial_and_empty():
 
 
 def test_user_update_coordinates_must_change_together():
-    assert UserUpdate(home_lat=1.0, home_lon=2.0).home_lat == 1.0
+    assert UserUpdate(home_lat=1.0, home_lon=2.0).home_lat == Decimal("1.00")
     assert UserUpdate(home_lat=None, home_lon=None).model_dump(exclude_unset=True) == {
         "home_lat": None,
         "home_lon": None,
@@ -117,7 +138,7 @@ def test_user_update_coordinates_must_change_together():
 
 def test_user_update_rounds_coordinates():
     update = UserUpdate(home_lat=28.61394, home_lon=77.20902)
-    assert (update.home_lat, update.home_lon) == (28.61, 77.21)
+    assert (update.home_lat, update.home_lon) == (Decimal("28.61"), Decimal("77.21"))
 
 
 def test_update_must_be_applied_with_exclude_unset():
@@ -178,8 +199,8 @@ def make_user() -> User:
         name="Test User",
         email="test.user@example.com",
         password_hash=FAKE_HASH,
-        home_lat=28.61,
-        home_lon=77.21,
+        home_lat=Decimal("28.61"),
+        home_lon=Decimal("77.21"),
         timezone="Asia/Kolkata",  # Python-side defaults apply only on flush
         consent_at=None,
         created_at=NOW,

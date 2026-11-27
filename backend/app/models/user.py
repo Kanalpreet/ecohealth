@@ -2,14 +2,18 @@
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, Float, String, func, text
+from sqlalchemy import CheckConstraint, DateTime, Numeric, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import (
     DEFAULT_TIMEZONE,
     EMAIL_MAX_LENGTH,
+    HOME_COORDINATE_DECIMALS,
+    HOME_LAT_PRECISION,
+    HOME_LON_PRECISION,
     LAT_MAX,
     LAT_MIN,
     LON_MAX,
@@ -44,8 +48,10 @@ class User(Base):
     # Internal only: never part of any read schema. Required, so an account can
     # never exist without a credential. Hashing arrives in the auth milestone.
     password_hash: Mapped[str] = mapped_column(String(255))
-    home_lat: Mapped[float | None] = mapped_column(Float)
-    home_lon: Mapped[float | None] = mapped_column(Float)
+    # Exact decimals rounded to 2 places (~1.1 km): the column itself enforces the
+    # precision, so even writes that bypass the schemas cannot store an exact home.
+    home_lat: Mapped[Decimal | None] = mapped_column(Numeric(HOME_LAT_PRECISION, HOME_COORDINATE_DECIMALS))
+    home_lon: Mapped[Decimal | None] = mapped_column(Numeric(HOME_LON_PRECISION, HOME_COORDINATE_DECIMALS))
     # IANA time zone name, validated by the schemas with zoneinfo (PostgreSQL
     # cannot check IANA names in a CHECK constraint). Routine times use it.
     timezone: Mapped[str] = mapped_column(

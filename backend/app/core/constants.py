@@ -19,6 +19,8 @@ LON_MIN, LON_MAX = -180.0, 180.0
 # Home coordinates are rounded to 2 decimals (~1.1 km). Environmental data is
 # grid-based at km scale, and coarser storage limits exposure of exact homes.
 HOME_COORDINATE_DECIMALS = 2
+HOME_LAT_PRECISION = 5  # Numeric(5,2): -90.00 .. 90.00
+HOME_LON_PRECISION = 6  # Numeric(6,2): -180.00 .. 180.00
 
 # ---- Family members ----
 AGE_MIN, AGE_MAX = 0, 120
