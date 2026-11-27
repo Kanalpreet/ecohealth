@@ -46,3 +46,37 @@ export const loginSchema = z.object({
     .min(1, 'Enter your password.')
     .max(LIMITS.PASSWORD_MAX, `Password must be at most ${LIMITS.PASSWORD_MAX} characters.`),
 })
+
+// ---- App forms (F3). Limits mirror backend/app/core/constants.py. ----
+
+export const memberSchema = z.object({
+  name: z.string().trim().min(1, 'Enter a name.').max(100, 'Name must be at most 100 characters.'),
+  // Empty input -> missing (not 0): coerce would silently turn '' into 0.
+  age: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : Number(v)),
+    z
+      .number({ error: 'Enter an age in years.' })
+      .int('Use whole years.')
+      .min(0, 'Age must be 0 or more.')
+      .max(120, 'Age must be 120 or less.'),
+  ),
+  conditions: z.array(z.string()).max(10, 'Choose at most 10 conditions.'),
+  sensitivity: z.number().min(0.5).max(2),
+})
+
+export const routineSchema = z
+  .object({
+    activityChoice: z.string().min(1, 'Choose an activity.'),
+    activityOther: z.string().trim().max(100, 'Use at most 100 characters.'),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/, 'Choose a time.'),
+    days_of_week: z.array(z.string()).min(1, 'Choose at least one day.'),
+  })
+  .refine((v) => v.activityChoice !== '__other__' || v.activityOther.length > 0, {
+    path: ['activityOther'],
+    message: 'Describe the activity.',
+  })
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, 'Enter your name.').max(100, 'Name must be at most 100 characters.'),
+  timezone: z.string().min(1, 'Choose a time zone.'),
+})

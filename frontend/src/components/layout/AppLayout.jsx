@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { motion } from 'motion/react'
-import { LayoutDashboard, LogIn, LogOut, Menu, UserPlus, X } from 'lucide-react'
-import { LogoMark } from '../public/Logo'
+import { Bell, ChevronUp, LayoutDashboard, LogOut, MapPin, MapPinned, Plane, Settings, Users } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useMotionSafe } from '../../hooks/useMotionSafe'
 import { cn } from '../../lib/cn'
+import { initialOf } from '../../lib/family'
+import { formatCoords, userHome } from '../../lib/geo'
+import { Logo } from '../public/Logo'
 
 const PAGE_ENTER = {
   initial: { opacity: 0, y: 8 },
@@ -13,57 +15,104 @@ const PAGE_ENTER = {
   transition: { duration: 0.25, ease: 'easeOut' },
 }
 
-const linkBase =
-  'flex min-h-11 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors'
+const NAV = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/family', label: 'Family', icon: Users },
+  { to: '/map', label: 'Risk Map', short: 'Map', icon: MapPinned },
+  { label: 'Trips', icon: Plane, soon: true },
+  { label: 'Alerts', icon: Bell, soon: true },
+  { to: '/settings', label: 'Settings', icon: Settings },
+]
+const TABS = NAV.filter((n) => ['/dashboard', '/family', '/map', '/settings'].includes(n.to))
 
-function navClass({ isActive }) {
-  return cn(linkBase, isActive ? 'bg-brand-soft text-brand-hover' : 'text-muted hover:bg-subtle hover:text-ink')
+function sideClass({ isActive }) {
+  return cn(
+    'flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-semibold transition-colors',
+    isActive ? 'bg-brand text-white shadow-card' : 'text-ink hover:bg-subtle',
+  )
 }
 
-/** Page shell: skip link, header with responsive nav, animated main area, footer. */
-export function AppLayout() {
-  const { status, logout } = useAuth()
-  const location = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [loggingOut, setLoggingOut] = useState(false)
-  const pageEnter = useMotionSafe(PAGE_ENTER)
-  const authed = status === 'authenticated'
+function Avatar({ name, className }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft font-bold text-brand-hover', className)}
+    >
+      {initialOf(name)}
+    </span>
+  )
+}
 
-  async function handleLogout() {
-    setLoggingOut(true)
-    await logout()
-    setLoggingOut(false)
-  }
+/** Bottom-of-sidebar user menu (Settings, Log out). Escape and outside clicks close it. */
+function UserMenu({ name, onLogout }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const buttonRef = useRef(null)
 
-  const links = authed ? (
-    <>
-      <NavLink to="/dashboard" className={navClass}>
-        <LayoutDashboard aria-hidden="true" size={18} />
-        Dashboard
-      </NavLink>
-      <button type="button" onClick={handleLogout} disabled={loggingOut} className={navClass({ isActive: false })}>
-        <LogOut aria-hidden="true" size={18} />
-        {loggingOut ? 'Logging out…' : 'Log out'}
-      </button>
-    </>
-  ) : status === 'anonymous' ? (
-    <>
-      <NavLink to="/login" className={navClass}>
-        <LogIn aria-hidden="true" size={18} />
-        Log in
-      </NavLink>
-      <NavLink
-        to="/register"
-        className={cn(linkBase, 'bg-brand text-white hover:bg-brand-hover')}
-      >
-        <UserPlus aria-hidden="true" size={18} />
-        Sign up
-      </NavLink>
-    </>
-  ) : null
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        buttonRef.current?.focus()
+      }
+    }
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown)
+    }
+  }, [open])
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div ref={ref} className="relative">
+      {open && (
+        <div role="menu" aria-label="Account" className="absolute right-0 bottom-full left-0 mb-2 rounded-card border border-line bg-surface p-1.5 shadow-overlay">
+          <Link role="menuitem" to="/settings" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 rounded-control px-3 text-sm font-semibold text-ink hover:bg-subtle">
+            <Settings aria-hidden="true" size={16} /> Settings
+          </Link>
+          <button
+            role="menuitem"
+            type="button"
+            onClick={onLogout}
+            className="flex min-h-10 w-full items-center gap-2 rounded-control px-3 text-sm font-semibold text-ink hover:bg-subtle"
+          >
+            <LogOut aria-hidden="true" size={16} /> Log out
+          </button>
+        </div>
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-12 w-full items-center gap-3 rounded-control px-2 text-left hover:bg-subtle"
+      >
+        <Avatar name={name} />
+        <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{name || 'Account'}</span>
+        <ChevronUp aria-hidden="true" size={16} className={cn('text-muted transition-transform', !open && 'rotate-180')} />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Logged-in app shell (light theme): sidebar on desktop (>= 1024 px), compact topbar +
+ * bottom tab bar on mobile. Trips and Alerts are shown disabled with "Soon" (no backend yet).
+ */
+export function AppLayout() {
+  const { user, logout } = useAuth()
+  const location = useLocation()
+  const pageEnter = useMotionSafe(PAGE_ENTER)
+  const home = userHome(user)
+
+  return (
+    <div className="min-h-dvh lg:pl-64">
       <a
         href="#main"
         className="sr-only z-50 rounded-control bg-surface px-4 py-2 font-semibold text-ink shadow-raised focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
@@ -71,59 +120,90 @@ export function AppLayout() {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
-        <div className="mx-auto flex h-16 max-w-content items-center justify-between gap-3 px-gutter sm:px-6">
-          <Link to={authed ? '/dashboard' : '/'} className="flex min-h-11 items-center gap-2 rounded-control font-bold text-ink">
-            <LogoMark />
-            <span className="text-lg">EcoHealth</span>
-          </Link>
-
-          <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
-            {links}
-          </nav>
-
-          {links && (
-            <button
-              type="button"
-              className="flex size-11 items-center justify-center rounded-control text-ink hover:bg-subtle sm:hidden"
-              aria-expanded={menuOpen}
-              aria-controls="mobile-nav"
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? <X aria-hidden="true" size={22} /> : <Menu aria-hidden="true" size={22} />}
-            </button>
-          )}
+      {/* ---- Desktop sidebar ---- */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface/80 px-4 py-5 backdrop-blur lg:flex">
+        <Logo to="/dashboard" className="px-2" />
+        <nav aria-label="App" className="mt-8 flex-1">
+          <ul className="flex flex-col gap-1">
+            {NAV.map((item) => {
+              const Icon = item.icon
+              return (
+                <li key={item.label}>
+                  {item.soon ? (
+                    <span
+                      aria-disabled="true"
+                      className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-control px-3 text-sm font-semibold text-muted opacity-70"
+                    >
+                      <Icon aria-hidden="true" size={18} />
+                      {item.label}
+                      <span className="ml-auto rounded-pill bg-brand-soft px-2 py-0.5 text-[0.7rem] text-brand-hover">Soon</span>
+                    </span>
+                  ) : (
+                    <NavLink to={item.to} className={sideClass}>
+                      <Icon aria-hidden="true" size={18} />
+                      {item.label}
+                    </NavLink>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+        <div className="border-t border-line pt-3">
+          <UserMenu name={user?.name} onLogout={logout} />
         </div>
+      </aside>
 
-        {menuOpen && (
-          // Any click inside (a link or Log out) closes the menu.
-          <nav
-            id="mobile-nav"
-            aria-label="Main mobile"
-            onClick={() => setMenuOpen(false)}
-            className="flex flex-col gap-1 border-t border-line px-gutter py-3 sm:hidden"
-          >
-            {links}
-          </nav>
-        )}
+      {/* ---- Topbar ---- */}
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur">
+        <div className="flex h-16 items-center justify-between gap-3 px-gutter sm:px-6">
+          <Logo to="/dashboard" className="text-lg lg:hidden" />
+          <div className="flex min-w-0 items-center gap-2 rounded-pill bg-surface px-3 py-1.5 text-sm shadow-card ring-1 ring-line">
+            <MapPin aria-hidden="true" size={16} className="shrink-0 text-accent" />
+            <span className="truncate">
+              <span className="hidden font-semibold sm:inline">Home: </span>
+              <span className="tabular-nums">{home ? formatCoords(home) : 'Not set'}</span>
+            </span>
+            <Link to="/settings#home-area" className="shrink-0 font-semibold text-accent underline-offset-4 hover:underline">
+              Change<span className="sr-only"> home area</span>
+            </Link>
+          </div>
+        </div>
       </header>
 
-      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
-        <motion.div
-          key={location.pathname}
-          className="mx-auto w-full max-w-content px-gutter py-8 sm:px-6 sm:py-12"
-          {...pageEnter}
-        >
+      <main id="main" tabIndex={-1} className="px-gutter pt-6 pb-28 focus:outline-none sm:px-6 lg:pb-12">
+        <motion.div key={location.pathname} className="mx-auto w-full max-w-6xl" {...pageEnter}>
           <Outlet />
         </motion.div>
       </main>
 
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-content px-gutter py-6 text-sm text-muted sm:px-6">
-          EcoHealth is a climate-health awareness tool, not a diagnostic tool and not medical advice.
-        </div>
-      </footer>
+      {/* ---- Mobile bottom tab bar ---- */}
+      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur lg:hidden">
+        <ul className="grid grid-cols-4">
+          {TABS.map((item) => {
+            const Icon = item.icon
+            return (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn('flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-semibold', isActive ? 'text-brand-hover' : 'text-muted')
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className={cn('flex h-7 w-12 items-center justify-center rounded-pill', isActive && 'bg-brand-soft')}>
+                        <Icon aria-hidden="true" size={20} />
+                      </span>
+                      {item.short || item.label}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
     </div>
   )
 }

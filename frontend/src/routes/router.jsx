@@ -41,13 +41,23 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <AppLayout />,
+        // Logged-in app. No home location yet -> /onboarding first.
+        element: <ProtectedRoute requireHome />,
         children: [
           {
-            element: <ProtectedRoute />,
-            children: [{ path: 'dashboard', element: <DashboardPage /> }],
+            element: <AppLayout />,
+            children: [
+              { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'family', lazy: lazyPage(() => import('../pages/app/FamilyPage'), 'FamilyPage') },
+              { path: 'map', lazy: lazyPage(() => import('../pages/app/MapPage'), 'MapPage') },
+              { path: 'settings', lazy: lazyPage(() => import('../pages/app/SettingsPage'), 'SettingsPage') },
+            ],
           },
         ],
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [{ path: 'onboarding', lazy: lazyPage(() => import('../pages/app/OnboardingPage'), 'OnboardingPage') }],
       },
     ],
   },
