@@ -1,3 +1,7 @@
+# ---- API ----
+fastapi==0.165.0
+uvicorn==0.54.0
+
 # ---- Configuration ----
 pydantic==2.14.4
 pydantic-settings==2.16.3
@@ -8,6 +12,8 @@ tzdata==2026.6  # IANA time zone database; Windows has none built in (needed by 
 # ---- Database ----
 SQLAlchemy==2.1.9
 psycopg[binary]==3.3.9
+alembic==1.20.1
 
 # ---- Testing ----
 pytest==9.2.0
+httpx==0.29.0  # used by FastAPI's TestClient
