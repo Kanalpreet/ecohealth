@@ -17,16 +17,20 @@ from app.services.environment.models import (
     EnvironmentSnapshot,
     HourlyForecastPoint,
     ProviderFailure,
+    GridCell,
+    ProviderSource,
     StationMeasurement,
     StationReading,
     StationReport,
     WeatherForecast,
 )
 from app.services.environment.service import EnvironmentService
+from app.services.environment.cache import CachedEnvironmentService  # noqa: E402,I001 (after service)
 
 __all__ = [
     "AirQualityForecast",
     "AirQualityReading",
+    "CachedEnvironmentService",
     "CurrentConditions",
     "DailyTemperature",
     "EnvironmentService",
@@ -34,7 +38,9 @@ __all__ = [
     "HourlyForecastPoint",
     "ProviderError",
     "ProviderFailure",
+    "GridCell",
     "ProviderNotConfiguredError",
+    "ProviderSource",
     "ProviderResponseError",
     "ProviderUnavailableError",
     "StationMeasurement",

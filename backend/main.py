@@ -10,6 +10,9 @@ from fastapi import FastAPI
 
 from app.api.health import router as health_router
 from app.core.errors import install_error_handling
+from app.core.logging import configure_logging
+
+configure_logging()
 
 app = FastAPI(title="EcoHealth API")
 install_error_handling(app)

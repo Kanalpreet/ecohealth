@@ -123,6 +123,30 @@ class ProviderFailure(_Domain):
     reason: str  # short and safe: no URLs, keys or response bodies
 
 
+SourceKind = Literal["live", "cache", "stale"]
+
+
+class ProviderSource(_Timed):
+    """Where a provider's data in this snapshot came from (see docs/caching.md)."""
+
+    source: SourceKind  # live = fetched now; cache = fresh cached copy; stale = expired copy after a failed fetch
+    fetched_at: AwareDatetime
+    expires_at: AwareDatetime | None = None  # None when the data was not cached
+
+    @field_validator("expires_at")
+    @classmethod
+    def _expires_utc(cls, value: datetime | None) -> datetime | None:
+        return None if value is None else _to_utc(value)
+
+
+class GridCell(_Domain):
+    """Centre of the cache grid cell the snapshot was built for."""
+
+    latitude: float
+    longitude: float
+    grid_degrees: float
+
+
 class EnvironmentSnapshot(_Timed):
     latitude: float
     longitude: float
@@ -133,6 +157,8 @@ class EnvironmentSnapshot(_Timed):
     stations: StationReport | None = None
     failures: list[ProviderFailure] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    sources: dict[ProviderName, ProviderSource] = Field(default_factory=dict)
+    cell: GridCell | None = None  # set by CachedEnvironmentService
 
     def failed(self, provider: ProviderName) -> bool:
         return any(f.provider == provider for f in self.failures)
