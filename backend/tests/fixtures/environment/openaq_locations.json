@@ -1,0 +1,88 @@
+{
+ "meta": {"name": "openaq-api", "website": "/", "page": 1, "limit": 100, "found": 5},
+ "results": [
+  {
+   "id": 13,
+   "name": "Old University Station",
+   "locality": null,
+   "timezone": "Asia/Kolkata",
+   "provider": {"id": 168, "name": "CPCB"},
+   "isMobile": false,
+   "isMonitor": true,
+   "sensors": [
+    {"id": 1301, "name": "pm25 µg/m³", "parameter": {"id": 2, "name": "pm25", "units": "µg/m³", "displayName": "PM2.5"}}
+   ],
+   "coordinates": {"latitude": 28.744, "longitude": 77.12},
+   "distance": 17261.4,
+   "datetimeFirst": {"utc": "2016-03-21T13:45:00Z", "local": "2016-03-21T19:15:00+05:30"},
+   "datetimeLast": {"utc": "2018-02-22T04:00:00Z", "local": "2018-02-22T09:30:00+05:30"}
+  },
+  {
+   "id": 50,
+   "name": "Punjabi Bagh, Delhi - DPCC",
+   "locality": null,
+   "timezone": "Asia/Kolkata",
+   "provider": {"id": 168, "name": "CPCB"},
+   "isMobile": false,
+   "isMonitor": true,
+   "sensors": [
+    {"id": 5001, "name": "pm25 µg/m³", "parameter": {"id": 2, "name": "pm25", "units": "µg/m³", "displayName": "PM2.5"}},
+    {"id": 5002, "name": "pm10 µg/m³", "parameter": {"id": 1, "name": "pm10", "units": "µg/m³", "displayName": "PM10"}}
+   ],
+   "coordinates": {"latitude": 28.674, "longitude": 77.131},
+   "distance": 10489.2,
+   "datetimeFirst": {"utc": "2017-01-01T00:00:00Z", "local": "2017-01-01T05:30:00+05:30"},
+   "datetimeLast": {"utc": "2026-11-27T07:30:00Z", "local": "2026-11-27T13:00:00+05:30"}
+  },
+  {
+   "id": 17,
+   "name": "R K Puram, Delhi - DPCC",
+   "locality": null,
+   "timezone": "Asia/Kolkata",
+   "provider": {"id": 168, "name": "CPCB"},
+   "isMobile": false,
+   "isMonitor": true,
+   "sensors": [
+    {"id": 1701, "name": "pm25 µg/m³", "parameter": {"id": 2, "name": "pm25", "units": "µg/m³", "displayName": "PM2.5"}},
+    {"id": 1702, "name": "pm10 µg/m³", "parameter": {"id": 1, "name": "pm10", "units": "µg/m³", "displayName": "PM10"}},
+    {"id": 1703, "name": "no2 µg/m³", "parameter": {"id": 5, "name": "no2", "units": "µg/m³", "displayName": "NO₂ mass"}}
+   ],
+   "coordinates": {"latitude": 28.563, "longitude": 77.187},
+   "distance": 5650.0,
+   "datetimeFirst": {"utc": "2017-01-01T00:00:00Z", "local": "2017-01-01T05:30:00+05:30"},
+   "datetimeLast": {"utc": "2026-11-27T07:50:00Z", "local": "2026-11-27T13:20:00+05:30"}
+  },
+  {
+   "id": 15,
+   "name": "IGI Airport",
+   "locality": null,
+   "timezone": "Asia/Kolkata",
+   "provider": {"id": 168, "name": "CPCB"},
+   "isMobile": false,
+   "isMonitor": true,
+   "sensors": [
+    {"id": 1501, "name": "pm25 µg/m³", "parameter": {"id": 2, "name": "pm25", "units": "µg/m³", "displayName": "PM2.5"}}
+   ],
+   "coordinates": {"latitude": 28.563, "longitude": 77.118},
+   "distance": 12629.0,
+   "datetimeFirst": null,
+   "datetimeLast": null
+  },
+  {
+   "id": 99,
+   "name": "Gas-only Station",
+   "locality": null,
+   "timezone": "Asia/Kolkata",
+   "provider": {"id": 1, "name": "N/A"},
+   "isMobile": false,
+   "isMonitor": true,
+   "sensors": [
+    {"id": 9901, "name": "o3 µg/m³", "parameter": {"id": 3, "name": "o3", "units": "µg/m³", "displayName": "O₃ mass"}}
+   ],
+   "coordinates": {"latitude": 28.62, "longitude": 77.22},
+   "distance": 1200.0,
+   "datetimeFirst": null,
+   "datetimeLast": {"utc": "2026-11-27T08:00:00Z", "local": "2026-11-27T13:30:00+05:30"}
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+{
+ "latitude": 28.599998,
+ "longitude": 77.20001,
+ "generationtime_ms": 0.1,
+ "utc_offset_seconds": 0,
+ "timezone": "GMT",
+ "timezone_abbreviation": "GMT",
+ "elevation": 217.0,
+ "current_units": {
+  "time": "iso8601",
+  "interval": "seconds",
+  "pm2_5": "μg/m³",
+  "pm10": "μg/m³",
+  "nitrogen_dioxide": "μg/m³",
+  "ozone": "μg/m³",
+  "sulphur_dioxide": "μg/m³",
+  "carbon_monoxide": "μg/m³"
+ },
+ "current": {
+  "time": "2026-11-27T08:00",
+  "interval": 3600,
+  "pm2_5": 72.6,
+  "pm10": 74.5,
+  "nitrogen_dioxide": 20.5,
+  "ozone": 183.0,
+  "sulphur_dioxide": 55.8,
+  "carbon_monoxide": 734.0
+ },
+ "hourly_units": {
+  "time": "iso8601",
+  "pm2_5": "μg/m³",
+  "pm10": "μg/m³",
+  "nitrogen_dioxide": "μg/m³",
+  "ozone": "μg/m³",
+  "sulphur_dioxide": "μg/m³",
+  "carbon_monoxide": "μg/m³"
+ },
+ "hourly": {
+  "time": [
+   "2026-11-26T00:00",
+   "2026-11-26T01:00",
+   "2026-11-26T02:00",
+   "2026-11-26T03:00",
+   "2026-11-26T04:00",
+   "2026-11-26T05:00"
+  ],
+  "pm2_5": [
+   140.6,
+   144.4,
+   160.2,
+   157.9,
+   132.7,
+   null
+  ],
+  "pm10": [
+   142.5,
+   146.2,
+   162.1,
+   158.8,
+   133.6,
+   null
+  ],
+  "nitrogen_dioxide": [
+   60.1,
+   60.1,
+   59.7,
+   56.5,
+   48.2,
+   null
+  ],
+  "ozone": [
+   10.0,
+   9.0,
+   9.0,
+   21.0,
+   56.0,
+   null
+  ],
+  "sulphur_dioxide": [
+   37.2,
+   41.4,
+   47.1,
+   50.3,
+   48.9,
+   null
+  ],
+  "carbon_monoxide": [
+   1067.0,
+   1293.0,
+   1631.0,
+   1812.0,
+   1687.0,
+   null
+  ]
+ }
+}
