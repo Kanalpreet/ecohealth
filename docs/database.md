@@ -20,6 +20,9 @@ users 1 ──── * family_members 1 ──── * routines
 
 All three tables have `created_at` and `updated_at` (`timestamptz`, default `now()`).
 
+The `env_cache` table (environmental data cache, one row per provider per grid cell,
+no user data) is described in [caching.md](caching.md).
+
 - **Deleting a user deletes their family members and their routines** (PostgreSQL
   `ON DELETE CASCADE`; the ORM uses `passive_deletes=True` so PostgreSQL does it).
 - **`updated_at` trigger**: `public.set_updated_at()` runs `BEFORE UPDATE` on every

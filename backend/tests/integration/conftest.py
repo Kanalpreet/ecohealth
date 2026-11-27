@@ -19,7 +19,10 @@ from app.core.config import ConfigurationError, get_settings
 from app.core.database import create_db_engine
 
 TEST_EMAIL_PREFIX = "it-"
-REQUIRED_TABLES = ("users", "family_members", "routines")
+REQUIRED_TABLES = ("users", "family_members", "routines", "env_cache")
+# Cache tests only use cells near the South Pole, so they can never collide with
+# real cached cells, and leftovers are easy to detect.
+TEST_CACHE_MAX_LAT = -89.0
 
 
 def unique_email() -> str:
@@ -57,8 +60,12 @@ def db_engine():
             text("SELECT count(*) FROM public.users WHERE email LIKE :pattern"),
             {"pattern": f"{TEST_EMAIL_PREFIX}%@example.com"},
         ).scalar_one()
+        cache_leftovers = connection.execute(
+            text("SELECT count(*) FROM public.env_cache WHERE cell_lat <= :lat"), {"lat": TEST_CACHE_MAX_LAT}
+        ).scalar_one()
     engine.dispose()
     assert leftovers == 0, f"{leftovers} integration-test users were left in the database"
+    assert cache_leftovers == 0, f"{cache_leftovers} integration-test cache rows were left in the database"
 
 
 @pytest.fixture

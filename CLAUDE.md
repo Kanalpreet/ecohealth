@@ -19,15 +19,20 @@ altitude) into personalised climate-health awareness for a user and their family
 
 - Backend: Python 3.12, **FastAPI**, **Pydantic** / Pydantic Settings
 - Database: **Supabase PostgreSQL**, **SQLAlchemy 2.x**, Psycopg 3, **Alembic**
-- Tests: **pytest** (`unit` and `integration` markers)
+- Tests: **pytest** (`unit`, `integration` and `external` markers)
 - Later: Next.js + TypeScript + Tailwind frontend, LangGraph, Groq (Ollama fallback), ChromaDB, Langfuse
 
 Key docs: [docs/database.md](docs/database.md), [docs/data-model.md](docs/data-model.md),
-[docs/configuration.md](docs/configuration.md), [docs/environment-data.md](docs/environment-data.md).
+[docs/configuration.md](docs/configuration.md), [docs/environment-data.md](docs/environment-data.md),
+[docs/caching.md](docs/caching.md).
 
 Environmental data sources: **Open-Meteo** (weather, air quality, elevation; no key)
 and **OpenAQ v3** (ground stations; optional `OPENAQ_API_KEY`). **NASA FIRMS / fire
 data is not used.** Alerts (later) will use **email and browser web push**, not Telegram.
+
+Provider results are cached per provider per grid cell (0.05°) in the `env_cache`
+table: use `CachedEnvironmentService` (not `EnvironmentService` directly) in app code.
+Every snapshot says per provider whether data is `live`, `cache` or `stale`.
 
 ## Run on Windows (PowerShell)
 
@@ -45,7 +50,8 @@ Copy-Item .env.example .env          # then fill in DATABASE_URL (Session Pooler
 .\.venv\Scripts\python.exe -m pytest                     # everything
 ```
 
-Demo of the environmental data clients (Delhi and Leh, real APIs), from the repo root:
+Demo of the cached environmental data service (Delhi and Leh, real APIs + Supabase;
+run it twice: first `LIVE`, then `CACHE`), from the repo root:
 
 ```powershell
 backend\.venv\Scripts\python.exe scripts\fetch_environment.py
