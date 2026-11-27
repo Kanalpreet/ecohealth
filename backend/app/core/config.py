@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     # Station readings older than this are ignored / marked stale.
     openaq_max_age_hours: float = Field(default=3.0, gt=0, le=72)
 
+    # ---- Environmental data cache (Go 3), see docs/caching.md ----
+    env_cache_grid_degrees: float = Field(default=0.05, ge=0.001, le=1.0)
+    env_cache_ttl_weather_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_air_quality_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_openaq_minutes: int = Field(default=30, ge=1, le=24 * 60)
+    env_cache_ttl_elevation_days: int = Field(default=30, ge=1, le=365)
+    env_cache_max_stale_hours: float = Field(default=6.0, gt=0, le=72)
+
     @field_validator("openaq_api_key", mode="before")
     @classmethod
     def blank_key_means_unset(cls, value: object) -> object:
