@@ -52,7 +52,7 @@ function Feedback({ alert, preview }) {
   }
 
   if (given !== null) return <p className="text-xs font-semibold text-accent">Thanks for the feedback</p>
-  const btn = 'flex size-9 items-center justify-center rounded-control ring-1 ring-line'
+  const btn = 'flex size-11 items-center justify-center rounded-control ring-1 ring-line'
   return (
     <div className="flex items-center gap-1.5" role="group" aria-label="Was this alert useful?">
       <span className="text-xs text-muted">Useful?</span>
@@ -67,7 +67,7 @@ function Feedback({ alert, preview }) {
           disabled={send.isPending}
           title={preview ? reason : label}
           onClick={() => vote(useful)}
-          className={cn(btn, preview ? 'cursor-not-allowed text-muted opacity-60' : 'text-ink hover:bg-subtle')}
+          className={cn(btn, preview ? 'cursor-not-allowed bg-subtle text-muted' : 'text-ink hover:bg-subtle')}
         >
           <Icon aria-hidden="true" size={16} />
           <span className="sr-only">

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { ArrowRight, TriangleAlert } from 'lucide-react'
 import { CountUp } from '../ui/CountUp'
+import { InteractiveCard } from '../ui/InteractiveCard'
 import { RiskBadge } from '../ui/RiskBadge'
 import { SafeHoursBar } from '../ui/SafeHoursBar'
 import { conditionLabel, formatTime, initialOf } from '../../lib/family'
@@ -20,7 +21,7 @@ export function FamilyRiskCard({ card, member, routines = [], timezone }) {
   const conditions = member?.conditions || []
 
   return (
-    <article className="flex h-full flex-col gap-4 rounded-card border border-line bg-surface p-5 shadow-card">
+    <InteractiveCard as="article" drag={false} className="flex h-full flex-col gap-4 rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex items-start gap-3">
         <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-lg font-extrabold text-brand-hover">
           {initialOf(card.name)}
@@ -82,6 +83,6 @@ export function FamilyRiskCard({ card, member, routines = [], timezone }) {
         Why this score?<span className="sr-only"> ({card.name})</span>
         <ArrowRight aria-hidden="true" size={16} />
       </Link>
-    </article>
+    </InteractiveCard>
   )
 }

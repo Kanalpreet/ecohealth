@@ -128,6 +128,16 @@
   --animate-air-b: air-drift-b 36s ease-in-out infinite;
   --animate-air-c: air-drift-c 44s ease-in-out infinite;
   --animate-float: float-y 7s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite; /* Skeleton light sweep */
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
 
   @keyframes air-drift-a {
     0%,
@@ -179,6 +189,9 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
     min-width: 320px;
+    /* Notched phones (viewport-fit=cover): keep content clear of the side cut-outs in landscape. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     line-height: 1.55;
   }
   h1,
@@ -229,4 +242,36 @@
 /* Native <dialog> backdrop (Modal). */
 dialog::backdrop {
   background: rgb(16 36 26 / 0.45);
+}
+
+/* MapLibre's built-in controls (trip route map): 44 px touch targets. */
+.maplibregl-ctrl.maplibregl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+}
+
+/*
+ * Login/Register flip card (pages/AuthFlipPage.jsx). Both sides are absolutely positioned
+ * (the hidden side never affects layout); the card's height follows the visible side.
+ * The 3D context exists only while a turn runs, so the card is flat (sharp text) at rest.
+ */
+.auth-flip-face {
+  position: absolute;
+  inset: 0 0 auto 0;
+}
+.auth-flip:not([data-flipping]) .auth-flip-face[aria-hidden='true'] {
+  visibility: hidden;
+}
+.auth-flip[data-flipping='turn'] {
+  perspective: 1800px;
+}
+.auth-flip[data-flipping='turn'] .auth-flip-card {
+  transform-style: preserve-3d;
+}
+.auth-flip[data-flipping='turn'] .auth-flip-face {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.auth-flip[data-flipping='turn'] .auth-flip-back {
+  transform: rotateY(180deg);
 }

@@ -1,10 +1,24 @@
+import { useState } from 'react'
 import { CircleAlert, RotateCcw } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { Button } from './Button'
 
-/** Error panel for a failed load. Shows the ApiError's safe message and an optional retry. */
+/**
+ * Error panel for a failed load. Shows the ApiError's safe message and an optional retry.
+ * If `onRetry` returns a promise (e.g. a query's refetch), the retry icon spins until it settles.
+ */
 export function ErrorState({ title = 'Something did not load', error, onRetry, className }) {
+  const [retrying, setRetrying] = useState(false)
   const message = error?.message || 'Please try again.'
+
+  async function retry() {
+    setRetrying(true)
+    try {
+      await onRetry()
+    } finally {
+      setRetrying(false)
+    }
+  }
+
   return (
     <div
       role="alert"
@@ -15,9 +29,16 @@ export function ErrorState({ title = 'Something did not load', error, onRetry, c
       <p className="max-w-md text-sm text-ink">{message}</p>
       {error?.requestId && <p className="text-xs text-muted">Reference: {error.requestId}</p>}
       {onRetry && (
-        <Button variant="secondary" icon={RotateCcw} onClick={onRetry}>
-          Try again
-        </Button>
+        <button
+          type="button"
+          onClick={retry}
+          disabled={retrying}
+          aria-busy={retrying || undefined}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-line-strong bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-subtle disabled:cursor-wait disabled:opacity-70"
+        >
+          <RotateCcw aria-hidden="true" size={18} className={cn(retrying && 'animate-spin [animation-direction:reverse]')} />
+          {retrying ? 'Trying again…' : 'Try again'}
+        </button>
       )}
     </div>
   )

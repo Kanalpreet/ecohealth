@@ -1,5 +1,5 @@
 import { BarChart3, Bell, CalendarClock, Plane, ShieldCheck, Users } from 'lucide-react'
-import { GlassCard } from '../ui/GlassCard'
+import { InteractiveCard } from '../ui/InteractiveCard'
 import { AlertDemo, FactorDemo, FamilyRiskDemo, PrivacyDemo, SafeHoursDemo, TravelDemo } from './FeatureDemos'
 
 const FEATURES = [
@@ -42,7 +42,7 @@ export function FeatureGrid() {
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(({ icon: Icon, title, text, Demo }) => (
           <li key={title} className="flex">
-            <GlassCard as="article" className="flex w-full flex-col gap-4">
+            <InteractiveCard as="article" className="glass flex w-full flex-col gap-4 rounded-card p-5 sm:p-6">
               <span className="flex size-12 items-center justify-center rounded-pill bg-brand-soft text-accent ring-1 ring-mint ring-inset">
                 <Icon aria-hidden="true" size={22} />
               </span>
@@ -53,7 +53,7 @@ export function FeatureGrid() {
               <div className="mt-auto">
                 <Demo />
               </div>
-            </GlassCard>
+            </InteractiveCard>
           </li>
         ))}
       </ul>

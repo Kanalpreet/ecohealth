@@ -43,7 +43,7 @@ Production:    browser ──► Vercel ──/api/* rewrite──► FastAPI on
   per-IP login limit sees the real client) and a rewrite that strips `/api`
   (FastAPI's routes are `/auth/...`, `/me`, ...).
 - **Production:** `frontend/vercel.json` rewrites `/api/:path*` to the backend URL
-  (a placeholder until deployment) and every other path to `/index.html`, so deep
+  (the `BACKEND_URL` placeholder until deployment, see §11) and every other path to `/index.html`, so deep
   links like `/dashboard` work after a reload.
 
 Why same-origin? Cookies and requests stay "first-party": no CORS preflights, no
@@ -138,8 +138,8 @@ particle. No leaf or other nature shape.
     CPCB National AQI categories Good, Satisfactory, Moderate, Poor, Very Poor and
     Severe (CPCB's band of dark green, light green, yellow, orange, red and maroon).
     It accepts the backend's names ("Moderately polluted", "Very poor") or a number.
-- **Base components** (`src/components/ui/`): Button, Input, Select, Checkbox, Card,
-  GlassCard, Pill, SectionTitle (+ Highlight), Badge (neutral), RiskBadge, AirBadge,
+- **Base components** (`src/components/ui/`): Button, Input, Select, Checkbox, InteractiveCard,
+  GlassCard, SectionTitle (+ Highlight), Badge (neutral), RiskBadge, AirBadge,
   AqiGauge, SafeHoursBar, FactorBar, Toast, Spinner, Skeleton, EmptyState, ErrorState,
   Alert, Modal / ConfirmDialog.
   - **AqiGauge:** a semicircle with the six CPCB bands, a rotating marker and a
@@ -222,11 +222,44 @@ particle. No leaf or other nature shape.
 - **No photos of people:** use icons and initials.
 - **No images:** there are no photo or illustration assets. Backgrounds are
   `AirBackground` / `GlowCircles`, and previews are built from real components.
-- **Auth pages** (`/login`, `/register`, `components/AuthCard.jsx`):
-  - From 1024 px: a split card. The left panel is the air gradient with the logo, the
-    tagline and a gently floating **Example** risk card (AirBadge, RiskBadge, safe
-    hours).
-  - Below 1024 px: the form card only.
+- **Auth pages: one flip card** (`/login` front, `/register` back; `pages/AuthFlipPage.jsx`,
+  `components/AuthCard.jsx`, `pages/LoginPage.jsx`, `pages/RegisterPage.jsx`):
+  - `AuthFlipPage` is the route layout for both paths, so it stays mounted while the URL
+    changes and renders both sides.
+  - **Sizing:**
+    - Both sides are positioned absolutely, so the hidden one never affects layout.
+    - A ResizeObserver measures each side's natural height, and the card takes the
+      **visible** side's height. During a switch the height animates to the other side's,
+      in time with the turn (same 0.7 s, no overshoot).
+    - The card is centred in the screen space below the navbar (`min-h: 100svh − 4.5rem`),
+      at least 32 px from it.
+    - Login fits on a 1366×768 laptop without scrolling. Register is taller (about 840 px on
+      desktop), so on smaller screens the page scrolls and the card is never cut off.
+  - **Switching turns the whole card** (left panel and form together): rotateY 0° ↔ 180°,
+    a Motion spring of about 0.7 s with a slight overshoot. This happens for the in-card
+    links, the navbar "Log in" / "Sign up" buttons and browser back/forward. Going back
+    turns the other way.
+  - A directly opened URL shows the right side without animating.
+  - The 3D context (perspective, preserve-3d, `backface-visibility: hidden`, the back
+    side's 180° turn) exists only while a turn runs (`data-flipping="turn"`, CSS in
+    `index.css`). At rest the card is flat (Chrome blurs text inside a resting 3D context)
+    and the hidden side is `visibility: hidden`.
+  - **Accessibility:**
+    - the hidden side is `inert` and `aria-hidden`;
+    - after a switch, focus moves to the new side's heading (`tabIndex=-1`);
+    - the page title follows the side ("Log in" / "Create account").
+  - Switching clears the hidden side's validation and server errors (`active` prop).
+  - **Reduced motion:** no 3D turn; the two sides crossfade (0.2 s).
+  - **Mobile:** the panels are hidden, so just the form card turns.
+  - **Login panel** (`variant="login"`, from 1024 px): logo, tagline and the small floating
+    **Example** card (AQI 240, Priya High, safe hours).
+  - **Register panel** (`variant="register"`, from 768 px): a flex column with
+    `justify-between`. Top to bottom:
+    - logo, the headline "Protect your whole family from climate risks." and the tagline;
+    - three benefits, each with an icon in a mint circle;
+    - a larger floating **Example** card (85% of the panel width): AQI 240 with AirBadge
+      Poor, Priya / Aarav / Papa with RiskBadges, and a small SafeHoursBar.
+  - The form is vertically centred in its column.
 - **Home hero card** uses clearly labelled **Example** data (never "Live"):
   - AQI 240 (Poor), with three sample people. The explanations describe the real
     engine weights (asthma, heart disease, age modifiers in `risk_config.py`).
@@ -236,8 +269,8 @@ particle. No leaf or other nature shape.
   - The "Why EcoHealth is different" comparison: a real `<table>` from 768 px,
     stacked cards below. The table is `display:none` on mobile, so nothing is read
     twice. Icons have text: a visible legend, plus screen-reader labels in cells.
-  - The Travel Mode preview: an Example trip plan; "Plan a trip" goes to
-    `/register`, with a "Trips are coming soon" badge.
+  - The Travel Mode preview: an Example trip plan; "Plan a trip" goes to `/register`.
+    Travel health plans show "Yes" in the comparison table.
   - CtaBand.
   - All demo data is sample data; each card's visual is `aria-hidden` and an sr-only
     sentence states what it shows. Uses Motion only: no GSAP in this chunk.
@@ -292,12 +325,15 @@ Rules:
 | **Persona switcher**: RiskBadge and explanation crossfade (0.18 s, opacity + small y), SafeHoursBar segment slides (translateX + scaleX), active tab pill glides (layout transform) | Home hero card (`PersonaSwitcher`) | Motion | **signature 2** | instant swaps |
 | AQI count-up (0 → value, 0.9 s) + marker rotation, once when visible | `AqiGauge` | Motion | subtle | final value and position at once. The category badge and the screen-reader label always show the final value immediately |
 | Air gradient drift: three blurred colour fields move/scale very slowly (28-44 s loops, transform only) | `AirBackground` (hero, page headers, mode cards, Travel preview, auth panel) | CSS keyframes | subtle, decorative | static (global reduced-motion CSS rule) |
-| Floating example card (8 px up/down, 7 s loop) | auth side panel (`AuthCard`) | CSS keyframes | subtle | static |
-| Route transition (fade + 12 px rise, 0.35 s) | every public page (`PublicLayout`) | Motion | subtle | none |
+| Floating example card (8 px up/down, 7 s loop) | auth side panels (`AuthCard`) | CSS keyframes | subtle | static |
+| **Auth card flip**: the whole card turns between Log in (front) and Sign up (back), rotateY 180°, spring about 0.7 s with a slight overshoot; 3D only while turning | `/login` ↔ `/register` (`AuthFlipPage`) | Motion | **signature** (the auth pages' only one) | 0.2 s crossfade, no 3D |
+| Page transition (fade + 10 px rise, 0.3 s; one shared preset, `lib/motion.js` `PAGE_ENTER`) | every page: public site (`PublicLayout`), app (`AppLayout`) and each onboarding step | Motion | subtle | none |
 | Navbar glass fade-in after scrolling | `Navbar` | CSS opacity | subtle | instant |
 | Mobile menu open/close (fade + 8 px) | `Navbar` | Motion | subtle | instant |
-| Card hover lift (y -2 px) | `Card interactive` (mode cards) | Motion | subtle | none |
-| Toasts, modal enter, app page enter (F1) | `Toast`, `Modal`, `AppLayout` | Motion | subtle | none |
+| **InteractiveCard** (F6): 3D tilt following the mouse (max 8°, spring) with a soft white light sheen that follows the pointer (translate + opacity); a short drag that springs back (free with a mouse, horizontal only on touch, `touch-action: pan-y` keeps page scrolling); press scale 0.985. Tilt only on fine pointers that can hover. Keyboard use is unaffected | Home hero card, Home/Travel Mode cards, `/features` mini-demo cards; dashboard family cards (tilt + press only, no drag) (`components/ui/InteractiveCard.jsx`) | Motion | subtle | plain element, no effects |
+| Skeleton light sweep (translateX loop, 1.6 s) | every loading placeholder (`Skeleton`) | CSS keyframes | subtle | static grey block |
+| Refresh / "Try again" icon spins while reloading | `RiskStatus` Refresh, every `ErrorState` retry | CSS | subtle | not spinning |
+| Toasts, modal enter (F1) | `Toast`, `Modal` | Motion | subtle | none |
 | **Feature mini demos** (one signature, six small parts, each driven by `useDemoLoop`: plays when ≥40% on screen, pauses off screen, loops after a short hold) | `/features` cards (`components/features/FeatureDemos.jsx`) | Motion | **signature** (the page's only one) | each shows its final, complete frame |
 | ↳ Family risk: three RiskBadges pop in one after another (opacity + scale) | Personalized Family Risk | Motion | part of signature | all three badges shown |
 | ↳ Safe hours: the "now" marker glides 7 AM → 9 PM in 1-hour steps (translateX); the text line updates | Safe Hours Timeline (`SafeHoursBar`) | Motion | part of signature | marker at the last step |
@@ -314,7 +350,7 @@ Rules:
 | "Why?" chevron rotates (CSS transform); the reason appears without animation | `/for-families` Same air card | CSS | subtle | instant |
 | **CountUp**: the number counts from 0 to its value (1.2 s) once 60% visible; the prefix/suffix and the screen-reader text are final from the start | `/about` impact and product stats (`components/ui/CountUp.jsx`) | Motion (motion value) | subtle | final number at once |
 
-## 9. Logged-in app (F3–F4)
+## 9. Logged-in app (F3–F5b)
 
 Light theme only. Code: `components/layout/AppLayout.jsx`, `pages/app/`, `pages/DashboardPage.jsx`.
 All backend calls go through `services/api.js`; server data uses TanStack Query
@@ -502,3 +538,240 @@ All backend calls go through `services/api.js`; server data uses TanStack Query
 | What | Where | Library | Reduced motion |
 |---|---|---|---|
 | Map glides from India to the home area (`flyTo`, 2.4 s), then the privacy circle expands from 15% to 100% of 1 km and fades in (0.9 s, canvas layer data). Station markers will pop in one after another once the API provides stations | `/map` (`RiskMap`) | MapLibre + requestAnimationFrame | starts on the home view with the full circle; no animation |
+
+### Trips and Alerts (F5b) and Preview mode
+The screens follow [docs/api-contract-trips-alerts.md](api-contract-trips-alerts.md).
+The backend does not have these endpoints yet, so the pages run in **Preview mode** until
+it does.
+
+- **How Preview mode switches on and off** (`services/api.js`, `hooks/useTripsAlerts.js`):
+  - Three probe calls decide it: `GET /trips` (Trips), `GET /alerts` (Alerts) and
+    `GET /me/alert-settings` (alert settings).
+  - `isNotImplemented(error)` is true for a **404 or 501**. The hooks then return
+    `{ preview: true, data: <sample> }`; any other answer returns
+    `{ preview: false, data }`. Other errors (500, 503, network) show the normal error
+    state, never sample data.
+  - Preview results are rechecked after 5 minutes (`staleTime`) and on page reload.
+    **When the backend adds the endpoints, the pages switch to real data on their own**;
+    no frontend change is needed if the response shapes match the contract.
+  - Trip detail and plan follow the list: if `GET /trips` is in preview, the detail page
+    uses the sample trip and plan instead of calling `GET /trips/{id}` and `/plan`.
+- **Sample data** lives only in `src/lib/previewData.js` (two sample travellers, a Leh trip
+  with altitude stops, a Goa trip, plans and eight alerts with times relative to now).
+- **Always labelled** (`components/ui/Preview.jsx`):
+  - Trips pages show a small, subtle **"Sample data"** tag (`SampleDataTag`) next to the
+    page title. They never say "coming soon".
+  - Alerts shows `PreviewBanner`: "Preview – Alerts are coming soon. This is sample data."
+    (`role="note"`).
+- **Locked actions in preview:** Plan a trip, Save, Edit, Delete and alert feedback use
+  `PreviewLockedButton` (or `aria-disabled`): a tooltip and a screen-reader reason, and a
+  click does nothing. On Trips the reason is the neutral "Not available in this version". The trip form can still be filled in (place search works) so the
+  flow can be tried.
+- **`/trips`:** trip cards (name, dates, route summary, highest stop elevation,
+  travellers); empty, loading and error states.
+- **`/trips/new`, `/trips/:id/edit`** (`TripFormPage.jsx`): four steps (Details,
+  Travellers, Stops, Review).
+  - Stops come from the place search (`services/geocoding.js`, which now also returns
+    the Open-Meteo `elevation`), can be reordered or removed, and have arrive/leave dates.
+  - A lazy `RouteMap` shows numbered stops joined by a dashed line, with the same map
+    safety and fallback as other maps.
+  - Validation (`lib/trips.js` `validateTrip`): name 1–100 characters, a trip type, start
+    on or before end, at least one traveller and one stop, and stop dates inside the trip
+    and in order.
+- **`/trips/:id`** (`TripDetailPage.jsx`) shows `GET /trips/{id}/plan`:
+  - The route strip with elevations, and the route map.
+  - Warnings in a red `role="alert"` box, and acclimatisation notes highlighted.
+  - Each traveller's risk (RiskBadge) and the risk by stop.
+  - The packing checklist: ticks are saved on this device only
+    (`localStorage` key `ecohealth.trip.<id>.checklist`).
+  - Nearby hospitals with distance and an OpenStreetMap link; a phone number only if the
+    API sends one.
+  - The plan time and the backend disclaimer.
+- **`/alerts`** (`AlertsPage.jsx`): a timeline grouped by day in the user's time zone
+  (Today, Yesterday, then dates). Filters: All, Air quality, Weather, Family, Travel
+  (`?type=`). "Load more" follows `next_cursor`. Thumbs up/down send
+  `POST /alerts/{id}/feedback`.
+- **Topbar bell** (`AppLayout.jsx`): the number of first-page alerts newer than the last
+  visit to `/alerts` on this device (`localStorage` key `ecohealth.alerts.lastSeen`;
+  "9+" above 9). Hidden in Preview mode or on error.
+- **Alert settings** (Settings): daily brief email, browser notifications and quiet hours,
+  saved with `PATCH /me/alert-settings`. The browser's notification permission is **not**
+  requested yet; a note says the browser will ask when notifications launch.
+- **Field names assumed** where the contract is loose: plan `travellers[]{member_id, level,
+  score}`, `stops[]{place, elevation_m, altitude_gain_m, level, key_risks}`,
+  `acclimatisation_notes`, `packing_checklist`, `warnings`,
+  `hospitals[]{name, distance_km, lat, lon, phone}`; alerts
+  `{id, created_at, type, level, title, body, member_ids}`; settings
+  `{daily_brief_email, browser_push, quiet_start, quiet_end}` with quiet hours in
+  `User.timezone`. If the backend uses other names, change only `api.js` comments and the
+  pages that read them.
+- **Animations:** none added; pages use the shared page-enter fade.
+
+## 10. Quality, performance and deployment (F6)
+
+### Enhancements
+- **InteractiveCard** (`components/ui/InteractiveCard.jsx`): tilt, light sheen, drag with
+  spring-back and press scale. See the animation inventory (§8). It replaced the old
+  `Card` component, which nothing else used.
+- **Ambient air tint** (`components/dashboard/AirTint.jsx`): a very faint, static radial
+  tint behind the dashboard, chosen by the current CPCB **air** category (never a person's
+  risk). The scale runs from a hint of green on Good days to warm amber on Very Poor and
+  Severe days, with alphas of 0.08–0.12. It is rendered into `<body>` behind the app
+  shell, is `aria-hidden`, and never replaces the AirBadge text. Muted text on the tinted
+  canvas stays above 6:1.
+- **Loading and refreshing:** every `Skeleton` has a light sweep. Every refresh/retry
+  button spins its icon while it works (`RiskStatus`, and `ErrorState`, which awaits the
+  promise `onRetry` returns).
+
+### Mobile
+- Checked at 360 px and 390 px: no horizontal scrolling on any page.
+- Touch targets are at least 44 px. F6 enlarged:
+  - the topbar "Change" link;
+  - Edit member, alert feedback, panel close;
+  - the condition and weekday chips;
+  - footer links on phones;
+  - MapLibre's zoom buttons.
+- **Safe areas:** `viewport-fit=cover` is set in `index.html`. Padding uses
+  `env(safe-area-inset-*)` on:
+  - the app topbar, the public navbar and the bottom tab bar;
+  - the main content's bottom padding;
+  - the toasts and the bottom-sheet footer;
+  - the body's left and right sides (landscape notches).
+
+### Accessibility checks
+- **Automated:** axe (WCAG 2.1 A + AA) runs inside the end-to-end test on Home, Login,
+  Family (page and side panel), Dashboard, Member detail, Map, Trips, Alerts and Settings.
+  Any serious or critical violation fails the test.
+  - Before each check the test waits for finite animations to finish (`e2e/a11y.js`), so
+    half-faded text isn't measured.
+  - The map canvas is excluded: it is a drawn image, and its information is repeated as
+    text beside it.
+- **Keyboard (in the same test):** the first Tab reaches "Skip to content"; focus moves into
+  the side panel; Escape closes the panel; the account menu opens with Enter, Escape closes
+  it and focus returns to its button.
+- **Fixed in F6:**
+  - "Coming soon" rows (Settings alerts, Map stations switch) were dimmed with
+    `opacity-70`, which dropped text contrast below AA. They now use `text-muted` (6.9:1).
+  - A screen-reader-only `<table>` on member detail made the page scroll sideways at
+    360 px; it is now wrapped in an `sr-only` div.
+  - Small touch targets (listed above).
+
+### Performance
+- **Code splitting:** every layout and page is a lazy route (`routes/router.jsx`).
+  - The public layout, the app shell (alerts bell, Trips/Alerts preview code) and the
+    form libraries (react-hook-form + zod, needed by Login/Register) are no longer in
+    the first download.
+  - GSAP is loaded only by the Home and How it Works pages (dynamic `import()`).
+  - MapLibre is lazy inside the map pages (onboarding, Settings, Map, trips).
+  - Recharts is lazy inside member detail.
+- **Vendor chunks** (`vite.config.js`, Rolldown `codeSplitting.groups`): React, React
+  Router, Motion and TanStack Query each get their own long-lived chunk, so a deploy only
+  re-downloads the small app chunk.
+- **Main bundle:**
+
+  | | Before F6 | After F6 |
+  |---|---|---|
+  | Entry chunk | 704 kB (223 kB gzip) | 29 kB (11 kB gzip) |
+  | Everything loaded before the first page | 704 kB (223 kB gzip) | ≈ 560 kB (≈ 182 kB gzip), in 5 cacheable files |
+
+  The build still warns about two lazy chunks over 500 kB: the MapLibre chunk and
+  Recharts. Both load only on the pages that need them.
+- **Console:** the app logs nothing.
+  - Expected browser lines: "Failed to load resource" for the 401 from `/auth/refresh`
+    when logged out, and the 404s from the Preview probes.
+  - MapLibre warns about filter expressions in the third-party OpenFreeMap style
+    (`layers[highway-shield-…].filter`). We can't fix these without hosting our own copy
+    of the style.
+
+### Error boundaries and 404
+- The root `errorElement` (`RouteErrorPage`) catches a crash in a layout.
+- Each section (public pages, app pages, onboarding) has its own pathless route with
+  `SectionErrorPage`. A crashing page shows a friendly message inside the navbar or
+  sidebar, with "Try again" and a link home. A failed lazy chunk (usually a new deploy)
+  says "EcoHealth was updated" and offers a reload.
+- Unknown URLs show `NotFoundPage`, with a "Back to home" link.
+
+### SEO, sharing and "Add to Home screen"
+- **Titles and descriptions:** `useDocumentTitle(title, description)` sets the title, the
+  meta description and `og:title` / `og:description` / `og:url` for each page. Public page
+  descriptions live in `lib/seo.js`.
+- **Static defaults:** `index.html` holds the default description, Open Graph and Twitter
+  tags (`og:image` = `/og-image.png`, 1200×630). Most link-preview bots don't run
+  JavaScript, so they see these defaults.
+- **Icons:** `public/favicon.svg`, plus PNG icons in `public/icons/` (192, 512, a maskable
+  512 and a 180 px Apple touch icon). Regenerate them from the logo with
+  `node scripts/generate-icons.mjs`, which uses Playwright's Chromium.
+- **Manifest:** `public/manifest.webmanifest` sets the name, short name, theme `#166534`,
+  background `#f5faf6`, `display: standalone`, `start_url: /dashboard` and the icons, so the
+  site can be added to a phone's home screen.
+  - There is no service worker, offline mode or push yet.
+  - Without a service worker, Android Chrome's "Add to Home screen" adds a shortcut that
+    opens standalone, not an installable "app".
+- **`public/robots.txt`:** keeps crawlers out of the signed-in app routes.
+
+### End-to-end test (Playwright)
+- **What it covers:** `e2e/happy-path.spec.js` runs one happy path against the real local
+  backend:
+  1. register a unique user;
+  2. onboarding (place search "New Delhi");
+  3. add a member, then a routine;
+  4. dashboard risk card;
+  5. member detail;
+  6. log out;
+  7. a protected page redirects to `/login?next=…`;
+  8. the 404 page.
+  Along the way it runs the axe and keyboard checks.
+- **Errors it rejects:** any HTTP error except the expected ones (401 from
+  `/auth/refresh`, 404 from the Preview probes), and any console error or warning from
+  our code.
+- **Cleanup:** an `afterAll` hook always logs in and calls `DELETE /me`, so no test data
+  is left in Supabase.
+- **Run:** `npm run test:e2e` (from `frontend/`; the backend must be running). See
+  frontend/CLAUDE.md.
+
+## 11. Deploying the frontend (Vercel)
+
+Nothing is deployed yet. Steps:
+
+1. **Import the repository** in Vercel (New Project → Import Git Repository).
+2. **Root Directory:** `frontend`.
+3. **Framework preset:** Vite.
+   - Build command: `npm run build`.
+   - Output directory: `dist`.
+   - Install command: `npm install` (the default).
+4. **Environment variables:** none are needed. The browser only calls same-origin `/api/*`
+   and the frontend reads no `VITE_*` variables. Never add secrets to the frontend.
+5. **Backend URL:** in `frontend/vercel.json`, replace the `BACKEND_URL` placeholder in the
+   `/api/:path*` rewrite with the backend's HTTPS host (e.g.
+   `https://ecohealth-api.onrender.com/:path*`). Vercel rewrites can't read environment
+   variables, so this value is committed.
+6. Deploy, then check:
+   - `https://<your-app>.vercel.app/api/health/db` answers;
+   - register, reload a deep link like `/dashboard` (the SPA rewrite), and log in again
+     after closing the tab (refresh cookie).
+
+`vercel.json` also:
+- caches `/assets/*` for a year (the files have content hashes);
+- sends `X-Content-Type-Options`, `Referrer-Policy` and a `Permissions-Policy` that
+  allows geolocation only for this site ("Use my current location").
+
+**What the backend needs in production** (backend `.env` on its host; see docs/auth.md):
+
+| Setting | Value | Why |
+|---|---|---|
+| `REFRESH_COOKIE_SECURE` | `true` | the site is HTTPS; the refresh cookie must be `Secure` |
+| `REFRESH_COOKIE_PATH` | `/api/auth` | the browser sees the auth endpoints under Vercel's `/api` prefix |
+| `REFRESH_COOKIE_SAMESITE` | `lax` | same-origin through the proxy, so no `None` is needed |
+| `TRUSTED_PROXIES` | the proxy addresses in front of the app (see below) | the per-IP login limit reads `X-Forwarded-For` only from trusted proxies |
+| `CORS_ORIGINS` | not needed for the app | the browser never calls the backend's origin directly (same-origin proxy); leave it at a harmless value or the Vercel domain |
+| `JWT_SECRET_KEY`, `DATABASE_URL` | secrets on the backend host only | never in the frontend or in git |
+
+**About `TRUSTED_PROXIES` and Vercel.** Requests reach FastAPI through Vercel's rewrite
+proxy and usually through the backend host's own load balancer. Vercel does not publish
+a fixed list of egress IP addresses, so the real client IP can't be trusted from
+Vercel's address alone.
+- **To confirm before launch:** what the backend host's load balancer adds to
+  `X-Forwarded-For`, and set `TRUSTED_PROXIES` to that load balancer's range.
+- **If the client IP can't be established reliably:** the per-IP login limit then counts
+  per proxy address, so it is weaker. The per-email limit still protects each account.
+- This needs a decision on the backend side.

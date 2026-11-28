@@ -20,11 +20,30 @@ export function PreviewBanner({ feature, className }) {
 }
 
 /**
+ * Small, subtle "Sample data" tag placed next to a page title (Trips pages) while the screen
+ * shows preview sample data. Keeps the screen honest without a large banner.
+ */
+export function SampleDataTag({ className }) {
+  return (
+    <span
+      title="This screen shows sample data in this version"
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-subtle px-2.5 py-1 text-xs font-semibold text-muted ring-1 ring-line ring-inset',
+        className,
+      )}
+    >
+      <FlaskConical aria-hidden="true" size={13} />
+      Sample data
+    </span>
+  )
+}
+
+/**
  * An action that is unavailable in Preview mode. Still focusable (so keyboard and screen
  * reader users learn why), aria-disabled, does nothing when pressed, and shows the reason
  * as a tooltip (title) and in its accessible description.
  */
-export function PreviewLockedButton({ children, icon: Icon, reason = 'Not available in preview: coming soon', className }) {
+export function PreviewLockedButton({ children, icon: Icon, reason = 'Not available in this version', className }) {
   return (
     <button
       type="button"

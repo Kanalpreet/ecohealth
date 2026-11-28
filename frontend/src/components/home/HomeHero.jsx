@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { ArrowRight, CircleCheck, Play, Sparkles } from 'lucide-react'
+import { ArrowRight, CircleCheck, Play } from 'lucide-react'
 import { usePrefersReducedMotion } from '../../hooks/useMotionSafe'
 import { useAirClearing } from '../../hooks/useAirClearing'
 import { cn } from '../../lib/cn'
@@ -8,7 +8,6 @@ import { AirBackground } from '../air/AirBackground'
 import { ParticleField } from '../air/ParticleField'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
-import { Pill } from '../ui/Pill'
 import { HeroCard } from './HeroCard'
 
 const TICKS = ['Personalized Risk', 'Real-time Alerts', 'Home & Travel Mode']
@@ -45,9 +44,8 @@ export function HomeHero() {
       </AirBackground>
 
       {/* ---- Content ---- */}
-      <div className="relative mx-auto grid max-w-content items-center gap-12 px-gutter pt-10 pb-24 sm:px-6 sm:pt-16 lg:min-h-[calc(100svh-4.5rem)] lg:grid-cols-[1.15fr_0.85fr] lg:pb-32">
+      <div className="relative mx-auto grid max-w-content items-center gap-12 px-gutter pt-8 pb-20 sm:px-6 sm:pt-10 lg:min-h-[calc(100svh-4.5rem)] lg:grid-cols-[1.15fr_0.85fr] lg:pt-6 lg:pb-14">
         <div className="flex flex-col items-start gap-6">
-          <Pill icon={Sparkles}>AI-Powered Climate Health</Pill>
           <h1 id="hero-title" className="text-display font-extrabold">
             Stay Healthy in a{' '}
             <span className="block text-accent">

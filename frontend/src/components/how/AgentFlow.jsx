@@ -64,7 +64,7 @@ function KindTag({ kind }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 text-[0.7rem] font-semibold',
+        'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold',
         kind === 'agent' ? 'rounded-pill bg-brand-soft text-brand-hover' : 'rounded-sm bg-subtle text-ink',
       )}
     >
@@ -176,8 +176,6 @@ export function AgentFlow() {
     <section aria-labelledby="flow-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
       <SectionTitle
         id="flow-title"
-        eyebrow="Agents at work"
-        eyebrowIcon={Sparkles}
         title="What happens behind every alert"
         subtitle="Plain code handles the facts. Four AI agents handle the thinking. Nothing reaches you without a safety check."
       />

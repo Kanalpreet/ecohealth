@@ -6,11 +6,11 @@ export const CONTACT_EMAIL = 'contact@example.com' // TODO: replace with the rea
 export const GITHUB_URL = 'https://github.com/YOUR-USERNAME/ecohealth' // TODO: replace with the real repository
 
 export const TEAM = [
-  { name: 'Your Name', role: 'Frontend & Design' }, // TODO: replace
-  { name: 'Teammate Name', role: 'Backend & AI' }, // TODO: replace
+  { name: 'Lovepreet Saini', role: 'Frontend & Design' }, // initials: LS
+  { name: 'Kanalpreet Kaur', role: 'Backend & AI' }, // initials: KK
 ]
 
-/** "Your Name" -> "YN" (used instead of photos). */
+/** "Lovepreet Saini" -> "LS" (used instead of photos). */
 export function initials(name) {
   return name
     .split(/\s+/)

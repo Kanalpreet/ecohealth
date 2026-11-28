@@ -2,6 +2,7 @@ import { Ban, Database, Download, FlaskConical, Scale, Target } from 'lucide-rea
 import { PageHeader } from '../../components/public/PageHeader'
 import { GlassCard } from '../../components/ui/GlassCard'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { PAGE_DESCRIPTIONS } from '../../lib/seo'
 
 /*
  * Plain-language privacy notice for the PROTOTYPE. Statements match what the backend
@@ -58,11 +59,10 @@ const SECTIONS = [
 
 /** /privacy (F2.4). Static, no animation. */
 export function PrivacyPage() {
-  useDocumentTitle('Privacy')
+  useDocumentTitle('Privacy', PAGE_DESCRIPTIONS.privacy)
   return (
     <>
       <PageHeader
-        pill="Privacy"
         title="Your privacy, in plain language."
         subtitle="What EcoHealth collects, why, and how you stay in control."
       />

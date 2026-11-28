@@ -3,7 +3,7 @@ import { ArrowRight, CalendarDays, Plane, Plus, Users } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorState } from '../../components/ui/ErrorState'
-import { PreviewBanner, PreviewLockedButton } from '../../components/ui/Preview'
+import { PreviewLockedButton, SampleDataTag } from '../../components/ui/Preview'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
 import { useMembers } from '../../hooks/useFamily'
@@ -19,7 +19,7 @@ export function TripsPage() {
   const list = trips.data?.data || []
 
   const planButton = preview ? (
-    <PreviewLockedButton icon={Plus} reason="Preview: planning trips is coming soon" className="rounded-pill">
+    <PreviewLockedButton icon={Plus} reason="Not available in this version" className="rounded-pill">
       Plan a trip
     </PreviewLockedButton>
   ) : (
@@ -32,13 +32,15 @@ export function TripsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-h1 font-extrabold text-brand-hover">Trips</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-h1 font-extrabold text-brand-hover">Trips</h1>
+            {preview && <SampleDataTag />}
+          </div>
           <p className="mt-1 text-muted">Plan safer travel with altitude, weather and air risks for each traveller.</p>
         </div>
         {trips.isSuccess && planButton}
       </div>
 
-      {preview && <PreviewBanner feature="Trips" />}
       {trips.isLoading && (
         <div className="grid gap-5 md:grid-cols-2">
           <Skeleton className="h-40" />

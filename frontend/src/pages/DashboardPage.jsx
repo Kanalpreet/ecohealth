@@ -1,4 +1,5 @@
 import { Info, Lightbulb, MapPin, Plus, Users } from 'lucide-react'
+import { AirTint } from '../components/dashboard/AirTint'
 import { FamilyRiskCard } from '../components/dashboard/FamilyRiskCard'
 import { RiskStatus } from '../components/dashboard/RiskStatus'
 import { TodayCard } from '../components/dashboard/TodayCard'
@@ -67,6 +68,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AirTint category={env.data?.assessment?.inputs?.aqi_category} />
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-h1 font-extrabold text-brand-hover">

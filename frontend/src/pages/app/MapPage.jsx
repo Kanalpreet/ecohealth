@@ -104,7 +104,7 @@ function Legend({ className }) {
 function StationsToggle() {
   const id = useId()
   return (
-    <div className="flex items-center gap-3 opacity-70">
+    <div className="flex items-center gap-3">
       <span
         id={id}
         role="switch"
@@ -115,7 +115,7 @@ function StationsToggle() {
       >
         <span className="absolute top-0.5 left-0.5 size-5 rounded-full bg-surface shadow-card" />
       </span>
-      <span className="text-sm font-semibold text-ink">Show stations</span>
+      <span className="text-sm font-semibold text-muted">Show stations</span>
       <Badge>Coming soon</Badge>
     </div>
   )

@@ -2,6 +2,7 @@ import { Code2, ExternalLink, Mail } from 'lucide-react'
 import { PageHeader } from '../../components/public/PageHeader'
 import { GlassCard } from '../../components/ui/GlassCard'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { PAGE_DESCRIPTIONS } from '../../lib/seo'
 import { CONTACT_EMAIL, GITHUB_URL } from '../../lib/siteConfig'
 
 const rowLink =
@@ -9,10 +10,10 @@ const rowLink =
 
 /** /contact (F2.4). Email and GitHub only, no form. Values live in lib/siteConfig.js. */
 export function ContactPage() {
-  useDocumentTitle('Contact')
+  useDocumentTitle('Contact', PAGE_DESCRIPTIONS.contact)
   return (
     <>
-      <PageHeader pill="Contact" title="Get in touch." subtitle="Questions, feedback or ideas about EcoHealth? We'd love to hear from you." />
+      <PageHeader title="Get in touch." subtitle="Questions, feedback or ideas about EcoHealth? We'd love to hear from you." />
       <div className="mx-auto w-full max-w-xl px-gutter pb-section sm:px-6">
         <GlassCard className="flex flex-col gap-3">
           <a href={`mailto:${CONTACT_EMAIL}`} className={rowLink}>

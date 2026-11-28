@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { ArrowRight, ArrowUpRight, House, MapPin, Plane } from 'lucide-react'
 import { AirBackground } from '../air/AirBackground'
 import { Badge } from '../ui/Badge'
-import { Card } from '../ui/Card'
+import { InteractiveCard } from '../ui/InteractiveCard'
 import { RiskBadge } from '../ui/RiskBadge'
 import { SectionTitle } from '../ui/SectionTitle'
 
@@ -83,7 +83,6 @@ const MODES = [
     title: 'Travel Mode',
     text: 'Altitude, weather and air risks for every traveller before a trip, so you can plan rest days and pack the right things.',
     Preview: TravelPreviewMini,
-    soon: true,
   },
 ]
 
@@ -93,13 +92,16 @@ export function ModeCards() {
     <section aria-labelledby="modes-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
       <SectionTitle
         id="modes-title"
-        eyebrow="Two modes"
         title="Protection at home and on the road."
         subtitle="One family profile, two ways to stay ahead of the weather and the air."
       />
       <div className="mt-10 grid gap-6 md:grid-cols-2">
-        {MODES.map(({ id, title, text, Preview, soon }) => (
-          <Card key={id} as="article" interactive className="flex flex-col overflow-hidden p-0 sm:p-0">
+        {MODES.map(({ id, title, text, Preview }) => (
+          <InteractiveCard
+            key={id}
+            as="article"
+            className="flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card transition-shadow hover:shadow-raised"
+          >
             <div className="relative flex min-h-56 items-center justify-center overflow-hidden px-6 py-8">
               <AirBackground />
               <div className="relative flex w-full justify-center">
@@ -110,7 +112,6 @@ export function ModeCards() {
               <div>
                 <h3 className="flex flex-wrap items-center gap-2 text-h3 font-bold">
                   {title}
-                  {soon && <Badge>Coming soon</Badge>}
                 </h3>
                 <p className="mt-2 text-muted">{text}</p>
               </div>
@@ -122,7 +123,7 @@ export function ModeCards() {
                 <ArrowRight aria-hidden="true" size={22} />
               </Link>
             </div>
-          </Card>
+          </InteractiveCard>
         ))}
       </div>
     </section>

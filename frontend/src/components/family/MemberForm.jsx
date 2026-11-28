@@ -81,7 +81,7 @@ export function MemberForm({ member, onSubmit, submitLabel = 'Save member', onCa
                   <label
                     key={c.code}
                     className={cn(
-                      'inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-pill px-3.5 text-sm font-semibold ring-1 ring-inset transition-colors',
+                      'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-pill px-3.5 text-sm font-semibold ring-1 ring-inset transition-colors',
                       'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
                       checked ? 'bg-brand-soft text-brand-hover ring-accent' : 'bg-surface text-ink ring-line-strong/50 hover:bg-subtle',
                     )}

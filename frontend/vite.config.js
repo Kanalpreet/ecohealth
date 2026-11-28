@@ -19,6 +19,24 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['maplibre-gl'],
     },
+    // Long-lived vendor chunks for the libraries every page needs. They change far less
+    // often than our code, so after a deploy browsers keep them cached and only download
+    // the small app chunks again. Heavy optional libraries (MapLibre, Recharts, GSAP, zod,
+    // react-hook-form) are NOT listed: they stay in the lazy chunks of the pages that use them.
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 3 },
+              { name: 'vendor-router', test: /node_modules[\\/]react-router[\\/]/, priority: 2 },
+              { name: 'vendor-motion', test: /node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/, priority: 2 },
+              { name: 'vendor-query', test: /node_modules[\\/]@tanstack[\\/]/, priority: 2 },
+            ],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       strictPort: true,

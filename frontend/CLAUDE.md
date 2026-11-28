@@ -23,6 +23,14 @@ and [design.md](../design.md) still apply; the frontend design is in
 8. **The backend URL never appears in browser code.** Call relative `/api/...` paths only.
    No secrets in `VITE_*` variables: they are bundled into public JavaScript.
 9. No Docker. Windows machine (PowerShell).
+10. **Preview (sample) data lives only in `src/lib/previewData.js` and is always labelled
+    as sample data**: the small `SampleDataTag` next to the title on Trips pages, the
+    `PreviewBanner` on Alerts (both in `components/ui/Preview.jsx`). It is used only
+    when a probe endpoint answers 404/501 (`isNotImplemented` in `api.js`, `orPreview` in
+    `hooks/useTripsAlerts.js`); never for other errors. In preview, actions that would write
+    data are locked (`PreviewLockedButton`, tooltip "Not available in this version"). Trips
+    pages never say "coming soon". Never request browser notification permission
+    until alerts launch.
 
 ## Libraries and where they are used
 
@@ -37,8 +45,9 @@ and [design.md](../design.md) still apply; the frontend design is in
 | Motion | UI animation | route/page enter, card hover, toasts, modal, persona switcher, gauge, feature demos; use `useMotionSafe` |
 | GSAP (+ ScrollTrigger) | public pages only: Home "the air clears" (`hooks/useAirClearing.js`) | **dynamic `import()` only**, never a static import; skip entirely under reduced motion |
 | @fontsource-variable/plus-jakarta-sans | the typeface (imported in `main.jsx`) | self-hosted; never add Google Fonts links |
-| Recharts | **later**, risk charts | |
-| MapLibre GL JS | **later**, maps (home location, Travel Mode) | |
+| Recharts | dashboard hourly chart (lazy) | |
+| MapLibre GL JS | location picker, Risk Map, trip route map (lazy, via SafeMap) | |
+| @playwright/test + @axe-core/playwright | dev only: `e2e/` test and accessibility checks; `scripts/generate-icons.mjs` | never imported by `src/` |
 
 Do not add other dependencies without agreement.
 
@@ -48,25 +57,33 @@ Do not add other dependencies without agreement.
 src/
   pages/         one component per route (pages/public/ = marketing placeholders)
   components/
-    ui/          base components: Button, Input, Select, Checkbox, Card, GlassCard, Pill,
+    ui/          base components: Button, Input, Select, Checkbox, InteractiveCard, GlassCard,
                  SectionTitle, Badge, RiskBadge (people), AirBadge (air, CPCB), AqiGauge,
-                 SafeHoursBar, Toast, Spinner, Skeleton, EmptyState, ErrorState, Alert, Modal
+                 SafeHoursBar, Toast, Spinner, Skeleton, EmptyState, ErrorState, Alert, Modal,
+                 Preview (PreviewBanner, SampleDataTag, PreviewLockedButton)
     air/         AirBackground, GlowCircles, StaticParticles, ParticleField (the "clean air" visuals)
     public/      PublicLayout, Navbar, Footer, PageHeader, CtaBand, Logo
     families/    /for-families sections (flip tiles, same-air card, personalise + setup)
     home/        Home page sections (hero, persona switcher, features, modes)
     features/    /features sections (feature demos, comparison table, travel preview)
     how/         /how-it-works sections (steps, agents flow, why-this-score example, trust + FAQ)
-    map/         SafeMap + MapErrorBoundary, MapView (picker map), RiskMap (/map), MapFallback, LocationPicker
+    map/         SafeMap + MapErrorBoundary, MapView (picker map), RiskMap (/map), RouteMap (trips), MapFallback,
+                 LocationPicker
     family/      member and routine forms, member card and side panel
-    dashboard/   risk status, today card, family risk card, hourly chart (Recharts, lazy)
+    dashboard/   risk status, today card, family risk card, air tint, hourly chart (Recharts, lazy)
     layout/      AppLayout (signed-in app shell)
     AuthProvider.jsx
-  hooks/         useAuth, useToast, useMotionSafe, useDocumentTitle
+  hooks/         useAuth, useToast, useMotionSafe, useDocumentTitle, useFamily, useRisk,
+                 useTripsAlerts (trips, alerts, alert settings + Preview mode)
   services/      api.js (the only backend client)
-  lib/           queryClient, validation, safeNext, risk levels, contexts, helpers
-  routes/        router + route guards
+  lib/           queryClient, validation, safeNext, risk levels, contexts, helpers,
+                 trips (validation, formatting, device-only checklist/seen storage),
+                 previewData (the ONLY sample data for Preview mode)
+  routes/        router (lazy routes, error boundaries) + route guards
   styles/        index.css (Tailwind + design tokens)
+public/          favicon.svg, icons/, og-image.png, manifest.webmanifest, robots.txt
+e2e/             Playwright test + axe helper (playwright.config.js at the root)
+scripts/         generate-icons.mjs (PNG icons + share image from the logo)
 ```
 
 Keep component files exporting components only (contexts and helpers live in `lib/`), so
@@ -93,6 +110,9 @@ React Fast Refresh and the lint rule `react-refresh/only-export-components` stay
 - App risk screens show only API values: anything missing says "Not available". Never mix RiskBadge (people) and AirBadge (air).
 - Load MapLibre only through `SafeMap` and Recharts only through `React.lazy`; never import them statically in shared code.
 - Sample/demo data on public pages is labelled "Example" or "Sample", never "Live".
+- **No decorative "eyebrow" pills** (small label pills above headings). Headings stand on
+  their own. Pills/badges are only for information: risk levels, air categories,
+  "Example"/"Preview"/"Coming soon" tags, filters and chips.
 - WCAG AA contrast (4.5:1 text, 3:1 UI borders). Use the existing tokens; check new colours.
 - Every page must work at **360 px** wide with no horizontal scrolling.
 - Every input has a visible `<label>`; errors use `aria-invalid` + `aria-describedby`.
@@ -114,7 +134,42 @@ npm run build        # production build in frontend/dist
 
 Optional: copy `.env.example` to `.env.local` to point the dev proxy at another backend
 (`DEV_API_TARGET`). Production routing (`/api/*` → backend, everything else → `index.html`)
-is in `vercel.json`; replace the placeholder backend URL when deploying.
+is in `vercel.json`; replace the `BACKEND_URL` placeholder when deploying.
 
-No frontend unit/e2e tests yet (e2e arrives in F6). Checks that must pass: `npm run lint`,
-`npm run build`, and the backend suite if anything in `backend/` changed.
+## End-to-end test (Playwright)
+
+One happy-path test in `e2e/happy-path.spec.js`. It runs against the **real local stack**:
+it registers a uniquely named user, goes through onboarding, adds a member and a routine,
+checks the dashboard and member detail, logs out, and checks the login redirect and the 404
+page. Along the way it runs axe (WCAG 2.1 AA, serious/critical issues fail) and keyboard
+checks. It always deletes the account at the end (`DELETE /me`), so nothing is left in
+Supabase.
+
+```powershell
+# terminal 1: the backend (see root CLAUDE.md)
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload
+
+# terminal 2
+cd frontend
+npx playwright install chromium   # first time only (downloads the test browser)
+npm run test:e2e                  # starts or reuses the Vite dev server on :5173
+npx playwright show-report        # HTML report (traces/screenshots on failure)
+```
+
+The test needs internet access (place search and map tiles). When you change a flow it
+covers, update the test. Allowed HTTP errors and console messages are listed at the top of
+the spec; don't widen them to hide real errors.
+
+Checks that must pass: `npm run lint`, `npm run build`, `npm run test:e2e`, and the backend
+suite if anything in `backend/` changed.
+
+## Performance, SEO and deployment
+
+- Every layout and page is a **lazy route** (`routes/router.jsx`); keep new pages lazy. Long-lived
+  vendor chunks are defined in `vite.config.js`. Don't add heavy libraries to them.
+- Each section has an error boundary (`SectionErrorPage`); unknown URLs show `NotFoundPage`.
+- Public pages pass a description to `useDocumentTitle(title, PAGE_DESCRIPTIONS.x)` (`lib/seo.js`).
+- Icons and the share image come from `node scripts/generate-icons.mjs`; the manifest is
+  `public/manifest.webmanifest`. No service worker or push yet.
+- Deploying (Vercel) and the backend's production settings: docs/frontend.md §11.

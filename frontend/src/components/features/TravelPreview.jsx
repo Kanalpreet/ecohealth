@@ -6,7 +6,6 @@ import { usePrefersReducedMotion } from '../../hooks/useMotionSafe'
 import { AirBackground, GlowCircles } from '../air/AirBackground'
 import { Badge } from '../ui/Badge'
 import { GlassCard } from '../ui/GlassCard'
-import { Pill } from '../ui/Pill'
 import { RiskBadge } from '../ui/RiskBadge'
 
 const CHECKLIST = ['Pulse oximeter', 'Inhaler and spare', 'Warm layers', 'Sunscreen SPF 50', 'ORS sachets']
@@ -49,7 +48,6 @@ export function TravelPreview() {
     >
       <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="flex flex-col items-start gap-4">
-          <Pill icon={Plane}>Travel Mode</Pill>
           <h2 id="travel-title" className="text-h2 font-extrabold">
             Going somewhere? We prepare you first.
           </h2>
@@ -65,7 +63,6 @@ export function TravelPreview() {
               Plan a trip
               <ArrowRight aria-hidden="true" size={20} />
             </Link>
-            <Badge>Trips are coming soon</Badge>
           </div>
         </div>
 

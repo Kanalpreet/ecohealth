@@ -7,7 +7,7 @@ import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { Input } from '../../components/ui/Input'
-import { PreviewBanner, PreviewLockedButton } from '../../components/ui/Preview'
+import { PreviewLockedButton, SampleDataTag } from '../../components/ui/Preview'
 import { Select } from '../../components/ui/Select'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { Spinner } from '../../components/ui/Spinner'
@@ -321,7 +321,7 @@ function TripForm({ initial, tripId, preview, members }) {
             Next
           </Button>
         ) : preview ? (
-          <PreviewLockedButton icon={Save} reason="Preview: saving trips is coming soon">
+          <PreviewLockedButton icon={Save} reason="Not available in this version">
             Save trip
           </PreviewLockedButton>
         ) : (
@@ -350,8 +350,10 @@ export function TripFormPage() {
       <Link to={tripId ? `/trips/${tripId}` : '/trips'} className="inline-flex min-h-11 items-center gap-1.5 self-start font-semibold text-accent underline-offset-4 hover:underline">
         <ArrowLeft aria-hidden="true" size={16} /> {tripId ? 'Back to trip' : 'All trips'}
       </Link>
-      <h1 className="text-h1 font-extrabold text-brand-hover">{tripId ? 'Edit trip' : 'Plan a trip'}</h1>
-      {preview && <PreviewBanner feature="Trips" />}
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-h1 font-extrabold text-brand-hover">{tripId ? 'Edit trip' : 'Plan a trip'}</h1>
+        {preview && <SampleDataTag />}
+      </div>
       {loading && <Skeleton className="h-72 w-full" />}
       {trips.isError && <ErrorState title="Trips didn't load" error={trips.error} onRetry={() => trips.refetch()} />}
       {trip.isError && <ErrorState title="This trip didn't load" error={trip.error} onRetry={() => trip.refetch()} />}

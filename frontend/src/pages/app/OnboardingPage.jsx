@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion } from 'motion/react'
 import { useNavigate } from 'react-router'
 import { ArrowRight, Check, Users } from 'lucide-react'
 import { MemberForm } from '../../components/family/MemberForm'
@@ -8,11 +9,13 @@ import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { useAuth } from '../../hooks/useAuth'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { useMotionSafe } from '../../hooks/useMotionSafe'
 import { useMemberMutations, useMembers, useUpdateMe } from '../../hooks/useFamily'
 import { useToast } from '../../hooks/useToast'
 import { cn } from '../../lib/cn'
 import { conditionLabel } from '../../lib/family'
 import { browserTimezone, roundPoint, userHome } from '../../lib/geo'
+import { PAGE_ENTER } from '../../lib/motion'
 
 const STEPS = ['Account', 'Home area', 'Family']
 
@@ -154,6 +157,7 @@ function FamilyStep() {
 export function OnboardingPage() {
   useDocumentTitle('Set up')
   const [step, setStep] = useState(1)
+  const enter = useMotionSafe(PAGE_ENTER)
   return (
     <div className="min-h-dvh px-gutter py-6 sm:px-6">
       <header className="mx-auto flex max-w-4xl items-center">
@@ -161,7 +165,9 @@ export function OnboardingPage() {
       </header>
       <main id="main" className="mx-auto mt-6 max-w-4xl rounded-panel border border-line bg-surface/80 p-5 shadow-card sm:p-10">
         <StepIndicator current={step} />
-        <div className="mt-8">{step === 1 ? <HomeStep onDone={() => setStep(2)} /> : <FamilyStep />}</div>
+        <motion.div key={step} className="mt-8" {...enter}>
+          {step === 1 ? <HomeStep onDone={() => setStep(2)} /> : <FamilyStep />}
+        </motion.div>
       </main>
     </div>
   )

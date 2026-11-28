@@ -64,7 +64,7 @@ export function TrustAndFaq() {
   return (
     <>
       <section aria-labelledby="trust-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="trust-title" eyebrow="Trust" title="Built to be trusted" />
+        <SectionTitle id="trust-title" title="Built to be trusted" />
         <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST.map(({ icon: Icon, title, text }) => (
             <li key={title} className="flex">
@@ -81,7 +81,7 @@ export function TrustAndFaq() {
       </section>
 
       <section aria-labelledby="faq-title" className="mx-auto w-full max-w-3xl px-gutter pt-section sm:px-6">
-        <SectionTitle id="faq-title" eyebrow="FAQ" title="Questions, answered" align="center" />
+        <SectionTitle id="faq-title" title="Questions, answered" align="center" />
         <ul className="mt-8 flex flex-col gap-3">
           {FAQ.map((item) => (
             <FaqItem key={item.q} {...item} />

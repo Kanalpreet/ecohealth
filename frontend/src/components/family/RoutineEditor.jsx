@@ -83,7 +83,7 @@ function RoutineForm({ routine, onSubmit, onCancel }) {
                     key={d.code}
                     title={d.label}
                     className={cn(
-                      'flex size-10 cursor-pointer items-center justify-center rounded-full text-sm font-bold ring-1 ring-inset',
+                      'flex size-11 cursor-pointer items-center justify-center rounded-full text-sm font-bold ring-1 ring-inset',
                       'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus',
                       checked ? 'bg-brand text-white ring-brand' : 'bg-surface text-ink ring-line-strong/50 hover:bg-subtle',
                     )}

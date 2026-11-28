@@ -235,9 +235,9 @@ function AlertsSection() {
         {settings.isError && <p className="mb-2 text-sm text-danger">Alert settings didn't load: {settings.error.message}</p>}
         <ul className="flex flex-col divide-y divide-line">
           {ALERT_ROWS.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 py-3 opacity-70">
+            <li key={label} className="flex items-center gap-3 py-3">
               <Icon aria-hidden="true" size={18} className="text-muted" />
-              <span className="flex-1 text-sm text-ink">{label}</span>
+              <span className="flex-1 text-sm text-muted">{label}</span>
               <Badge>Coming soon</Badge>
               <span
                 role="switch"

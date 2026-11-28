@@ -1,7 +1,8 @@
 /*
  * PREVIEW SAMPLE DATA: the ONLY place sample Trips/Alerts data may live
  * (frontend/CLAUDE.md). Shaped exactly like the API in services/api.js
- * (docs/api-contract-trips-alerts.md). Shown ONLY behind <PreviewBanner>, and only while
+ * (docs/api-contract-trips-alerts.md). Always labelled as sample data (<SampleDataTag> on
+ * Trips pages, <PreviewBanner> on Alerts), and only while
  * the backend answers 404/501 for these endpoints. Not real measurements or advice.
  */
 

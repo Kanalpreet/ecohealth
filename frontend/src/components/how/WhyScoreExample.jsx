@@ -49,7 +49,6 @@ export function WhyScoreExample() {
       <div className="grid items-start gap-10 lg:grid-cols-[0.8fr_1.2fr]">
         <SectionTitle
           id="why-title"
-          eyebrow="Explained, not just scored"
           title="Why this score?"
           subtitle="Every score comes with its reasons: which factors raise it, by how much, and what makes each person more sensitive. Hover or focus a part of the bar to see its row."
         />

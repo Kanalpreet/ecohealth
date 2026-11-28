@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,12 +8,14 @@ import { Alert } from '../components/ui/Alert'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { loginSchema } from '../lib/validation'
 import { applyServerErrors } from '../lib/formErrors'
 
-export function LoginPage() {
-  useDocumentTitle('Log in')
+/**
+ * Front side of the auth card (/login). Rendered by AuthFlipPage together with the Register
+ * side; `active` is false while this side is turned away (its errors are then cleared).
+ */
+export function LoginPage({ active = true, titleRef }) {
   const { login } = useAuth()
   const [params] = useSearchParams()
   const next = params.get('next')
@@ -22,8 +24,19 @@ export function LoginPage() {
     register,
     handleSubmit,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
+
+  // Turning to the other side clears this side's messages (React: adjust state during render).
+  const [wasActive, setWasActive] = useState(active)
+  if (active !== wasActive) {
+    setWasActive(active)
+    if (!active) setFormError(null)
+  }
+  useEffect(() => {
+    if (!active) clearErrors()
+  }, [active, clearErrors])
 
   // On success PublicOnlyRoute redirects to the safe ?next= path (or /dashboard).
   async function onSubmit(values) {
@@ -39,6 +52,8 @@ export function LoginPage() {
 
   return (
     <AuthCard
+      variant="login"
+      titleRef={titleRef}
       title="Welcome back"
       subtitle="Log in to see today's climate-health picture for your family."
       footer={

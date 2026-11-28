@@ -1,19 +1,18 @@
 import { Outlet, useLocation } from 'react-router'
 import { motion } from 'motion/react'
 import { useMotionSafe } from '../../hooks/useMotionSafe'
+import { PAGE_ENTER } from '../../lib/motion'
 import { Footer } from './Footer'
 import { Navbar } from './Navbar'
 
-const ROUTE_ENTER = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-}
+const AUTH_PATHS = /^\/(login|register)\/?$/
 
 /** Shell for the public site (/, /features, ..., /login, /register): navbar, page, footer. */
 export function PublicLayout() {
   const location = useLocation()
-  const enter = useMotionSafe(ROUTE_ENTER)
+  const enter = useMotionSafe(PAGE_ENTER)
+  // /login and /register are one flip card: same key, so switching doesn't replay the page enter.
+  const pageKey = AUTH_PATHS.test(location.pathname) ? 'auth' : location.pathname
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -25,7 +24,7 @@ export function PublicLayout() {
       <Navbar />
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col focus:outline-none">
         {/* Gentle route transition: fade + small rise on every public page change. */}
-        <motion.div key={location.pathname} className="flex flex-1 flex-col" {...enter}>
+        <motion.div key={pageKey} className="flex flex-1 flex-col" {...enter}>
           <Outlet />
         </motion.div>
       </main>

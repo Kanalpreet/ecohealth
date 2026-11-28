@@ -1,15 +1,13 @@
 import { cn } from '../../lib/cn'
-import { Pill } from './Pill'
 
 /**
- * Section heading: optional eyebrow pill, title (h2 by default) and subtitle.
+ * Section heading: title (h2 by default) and optional subtitle. No eyebrow labels.
  * `title` may contain <Highlight> for the mint marker effect from the inspiration.
  */
-export function SectionTitle({ eyebrow, eyebrowIcon, title, subtitle, as: Heading = 'h2', align = 'left', id, className }) {
+export function SectionTitle({ title, subtitle, as: Heading = 'h2', align = 'left', id, className }) {
   const centered = align === 'center'
   return (
     <div className={cn('flex flex-col gap-3', centered ? 'items-center text-center' : 'items-start', className)}>
-      {eyebrow && <Pill icon={eyebrowIcon}>{eyebrow}</Pill>}
       <Heading id={id} className="text-h2 font-extrabold">
         {title}
       </Heading>

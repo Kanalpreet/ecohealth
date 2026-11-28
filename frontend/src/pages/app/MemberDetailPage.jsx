@@ -249,7 +249,8 @@ export function MemberDetailPage() {
                   <p className="mt-2 text-xs text-muted">
                     Hourly scores use each hour's air quality, so they can differ from the current score (which uses the 24-hour average).
                   </p>
-                  <table className="sr-only">
+                  <div className="sr-only">
+                  <table>
                     <caption>Hourly risk score for the next 24 hours ({timezone})</caption>
                     <thead>
                       <tr>
@@ -268,6 +269,7 @@ export function MemberDetailPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                   <SafeHoursBar
                     className="mt-4"
                     from={0}

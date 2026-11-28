@@ -21,7 +21,7 @@ export function PersonaliseAndSetup() {
   return (
     <>
       <section aria-labelledby="personalise-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="personalise-title" eyebrow="Personal by design" title="How we personalise" />
+        <SectionTitle id="personalise-title" title="How we personalise" />
         <ul className="mt-8 grid gap-6 md:grid-cols-3">
           {PERSONALISE.map(({ icon: Icon, title, text }) => (
             <li key={title} className="flex">

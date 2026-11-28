@@ -49,14 +49,14 @@ export function Drawer({ open, onClose, title, description, children, footer, cl
             <button
               type="button"
               onClick={onClose}
-              className="-m-2 flex size-10 shrink-0 items-center justify-center rounded-control text-muted hover:text-ink"
+              className="-m-2 flex size-11 shrink-0 items-center justify-center rounded-control text-muted hover:text-ink"
               aria-label="Close"
             >
               <X aria-hidden="true" size={20} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
-          {footer && <div className="flex gap-2 border-t border-line px-5 py-4 sm:px-6">{footer}</div>}
+          {footer && <div className="flex gap-2 border-t border-line px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">{footer}</div>}
         </div>
       )}
     </dialog>

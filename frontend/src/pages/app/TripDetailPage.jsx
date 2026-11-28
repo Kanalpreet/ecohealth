@@ -5,7 +5,7 @@ import { MapErrorBoundary } from '../../components/map/SafeMap'
 import { Button } from '../../components/ui/Button'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { ConfirmDialog } from '../../components/ui/Modal'
-import { PreviewBanner, PreviewLockedButton } from '../../components/ui/Preview'
+import { PreviewLockedButton, SampleDataTag } from '../../components/ui/Preview'
 import { RiskBadge } from '../../components/ui/RiskBadge'
 import { Skeleton } from '../../components/ui/Skeleton'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
@@ -97,7 +97,6 @@ export function TripDetailPage() {
       <Link to="/trips" className="inline-flex min-h-11 items-center gap-1.5 self-start font-semibold text-accent underline-offset-4 hover:underline">
         <ArrowLeft aria-hidden="true" size={16} /> All trips
       </Link>
-      {preview && <PreviewBanner feature="Trips" />}
       {(trips.isLoading || trip.isLoading) && <Skeleton className="h-40 w-full" />}
       {(trips.isError || trip.isError) && (
         <ErrorState title={trip.error?.code === 'not_found' ? 'Trip not found' : "This trip didn't load"} error={trips.error || trip.error} onRetry={() => trip.refetch()} />
@@ -108,9 +107,12 @@ export function TripDetailPage() {
         <>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="flex items-center gap-3 text-h1 font-extrabold text-brand-hover">
-                <Plane aria-hidden="true" size={28} className="shrink-0" /> {t.name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="flex items-center gap-3 text-h1 font-extrabold text-brand-hover">
+                  <Plane aria-hidden="true" size={28} className="shrink-0" /> {t.name}
+                </h1>
+                {preview && <SampleDataTag />}
+              </div>
               <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays aria-hidden="true" size={16} /> {formatDateRange(t.start_date, t.end_date)}
@@ -124,10 +126,10 @@ export function TripDetailPage() {
             <div className="flex gap-2">
               {preview ? (
                 <>
-                  <PreviewLockedButton icon={Pencil} reason="Preview: editing trips is coming soon">
+                  <PreviewLockedButton icon={Pencil} reason="Not available in this version">
                     Edit
                   </PreviewLockedButton>
-                  <PreviewLockedButton icon={Trash2} reason="Preview: deleting trips is coming soon">
+                  <PreviewLockedButton icon={Trash2} reason="Not available in this version">
                     Delete
                   </PreviewLockedButton>
                 </>

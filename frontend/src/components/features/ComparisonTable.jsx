@@ -1,11 +1,10 @@
-import { Check, Clock, Minus, X } from 'lucide-react'
+import { Check, Minus, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { SectionTitle } from '../ui/SectionTitle'
 
 /*
  * General, respectful comparison with typical product categories (no brand names).
- * "partly" = some products in the category do it. EcoHealth's Travel plans are
- * "soon" (Travel Mode is built after Home Mode).
+ * "partly" = some products in the category do it.
  */
 const COLUMNS = ['Typical AQI apps', 'Smartwatches', 'EcoHealth']
 
@@ -15,7 +14,7 @@ const ROWS = [
   { feature: 'Heat, cold and UV, not just air', values: ['partly', 'partly', 'yes'] },
   { feature: 'Safe-hours planning', values: ['partly', 'no', 'yes'] },
   { feature: 'Explains why risk is high', values: ['no', 'no', 'yes'] },
-  { feature: 'Travel health plans', values: ['no', 'no', 'soon'] },
+  { feature: 'Travel health plans', values: ['no', 'no', 'yes'] },
   { feature: 'Free in any browser', values: ['partly', 'no', 'yes'] },
 ]
 
@@ -23,7 +22,6 @@ const STATUS = {
   yes: { icon: Check, label: 'Yes', className: 'bg-success-soft text-success' },
   partly: { icon: Minus, label: 'Partly', className: 'bg-risk-moderate text-risk-moderate-ink' },
   no: { icon: X, label: 'No', className: 'bg-subtle text-muted' },
-  soon: { icon: Clock, label: 'Coming soon', className: 'bg-info-soft text-info' },
 }
 
 /** Icon + text. In the table the text is visually hidden (the legend explains the icons). */
@@ -35,7 +33,7 @@ function StatusMark({ value, showText = false }) {
       <span className={cn('flex size-7 shrink-0 items-center justify-center rounded-full', s.className)}>
         <Icon aria-hidden="true" size={16} strokeWidth={2.5} />
       </span>
-      <span className={showText || value === 'soon' ? 'text-sm font-medium text-ink' : 'sr-only'}>{s.label}</span>
+      <span className={showText ? 'text-sm font-medium text-ink' : 'sr-only'}>{s.label}</span>
     </span>
   )
 }
@@ -58,7 +56,6 @@ export function ComparisonTable() {
     <section aria-labelledby="compare-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
       <SectionTitle
         id="compare-title"
-        eyebrow="Not just another AQI number"
         title="Why EcoHealth is different"
         subtitle="What you typically get from each kind of tool. Individual products vary."
       />

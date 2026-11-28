@@ -27,7 +27,7 @@ const COLUMNS = [
   },
 ]
 
-const linkClass = 'inline-flex min-h-8 items-center rounded-control text-sm text-muted hover:text-brand-hover hover:underline underline-offset-4'
+const linkClass = 'inline-flex min-h-11 items-center sm:min-h-8 rounded-control text-sm text-muted hover:text-brand-hover hover:underline underline-offset-4'
 const externalClass = 'font-semibold text-ink underline decoration-mint-strong underline-offset-4 hover:text-brand-hover'
 
 /** Public-site footer. Data attribution (Open-Meteo is CC BY 4.0) and the disclaimer are required. */

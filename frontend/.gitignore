@@ -6,3 +6,8 @@ dist/
 !.env.example
 npm-debug.log*
 .vite/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

@@ -4,14 +4,14 @@ import { SameAirCard } from '../../components/families/SameAirCard'
 import { CtaBand } from '../../components/public/CtaBand'
 import { PageHeader } from '../../components/public/PageHeader'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { PAGE_DESCRIPTIONS } from '../../lib/seo'
 
 /** /for-families (F2.4). Motion only (flip tiles); no GSAP. */
 export function ForFamiliesPage() {
-  useDocumentTitle('For Families')
+  useDocumentTitle('For Families', PAGE_DESCRIPTIONS.forFamilies)
   return (
     <>
       <PageHeader
-        pill="For Families"
         title="Built for the people who need it most."
         subtitle="The same air affects everyone differently. EcoHealth protects each person in your family."
       />

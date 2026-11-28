@@ -24,7 +24,7 @@ export function MemberCard({ member, routinesQuery, onEdit }) {
         <button
           type="button"
           onClick={onEdit}
-          className="flex size-10 shrink-0 items-center justify-center rounded-control text-muted ring-1 ring-line hover:bg-subtle hover:text-ink"
+          className="flex size-11 shrink-0 items-center justify-center rounded-control text-muted ring-1 ring-line hover:bg-subtle hover:text-ink"
           aria-label={`Edit ${member.name}`}
         >
           <Pencil aria-hidden="true" size={16} />

@@ -5,6 +5,7 @@ import { CountUp } from '../../components/ui/CountUp'
 import { GlassCard } from '../../components/ui/GlassCard'
 import { SectionTitle } from '../../components/ui/SectionTitle'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { PAGE_DESCRIPTIONS } from '../../lib/seo'
 import { TEAM, initials } from '../../lib/siteConfig'
 
 const linkClass = 'font-semibold text-brand-hover underline decoration-mint-strong underline-offset-4 hover:text-forest'
@@ -67,10 +68,10 @@ function IconHalo({ icon: Icon }) {
 
 /** /about (F2.4). Motion only (count-ups); no GSAP. */
 export function AboutPage() {
-  useDocumentTitle('About')
+  useDocumentTitle('About', PAGE_DESCRIPTIONS.about)
   return (
     <>
-      <PageHeader pill="About" title="About EcoHealth." subtitle="A preventive climate-health platform for you and your family." />
+      <PageHeader title="About EcoHealth." subtitle="A preventive climate-health platform for you and your family." />
 
       {/* Why we built it */}
       <section aria-labelledby="why-built" className="mx-auto w-full max-w-content px-gutter sm:px-6">
@@ -115,7 +116,7 @@ export function AboutPage() {
 
       {/* What EcoHealth gives you */}
       <section aria-labelledby="gives-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="gives-title" eyebrow="The product" title="What EcoHealth gives you" />
+        <SectionTitle id="gives-title" title="What EcoHealth gives you" />
         <ul className="mt-8 grid gap-6 sm:grid-cols-3">
           {PRODUCT.map((p) => (
             <li key={p.label} className="flex">
@@ -131,7 +132,7 @@ export function AboutPage() {
 
       {/* Principles */}
       <section aria-labelledby="principles-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="principles-title" eyebrow="What guides us" title="Our principles" />
+        <SectionTitle id="principles-title" title="Our principles" />
         <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {PRINCIPLES.map((p) => (
             <li key={p.title} className="flex">
@@ -147,7 +148,7 @@ export function AboutPage() {
 
       {/* Data and credits */}
       <section aria-labelledby="credits-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="credits-title" eyebrow="Credits" title="Data and credits" />
+        <SectionTitle id="credits-title" title="Data and credits" />
         <GlassCard className="mt-8">
           <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {CREDITS.map((c) => (
@@ -165,7 +166,7 @@ export function AboutPage() {
 
       {/* Team */}
       <section aria-labelledby="team-title" className="mx-auto w-full max-w-content px-gutter pt-section sm:px-6">
-        <SectionTitle id="team-title" eyebrow="The team" title="Built as a final-year B.Tech project." />
+        <SectionTitle id="team-title" title="Built as a final-year B.Tech project." />
         <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:max-w-3xl">
           {TEAM.map((member) => (
             <li key={member.name} className="flex">

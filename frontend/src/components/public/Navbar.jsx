@@ -80,7 +80,7 @@ export function Navbar() {
     ) : null
 
   return (
-    <header className="sticky top-0 z-40">
+    <header className="sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
       {/* Glass layer fades in after scrolling (opacity only). */}
       <div
         aria-hidden="true"

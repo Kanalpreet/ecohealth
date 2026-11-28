@@ -7,15 +7,10 @@ import { useMotionSafe } from '../../hooks/useMotionSafe'
 import { cn } from '../../lib/cn'
 import { initialOf } from '../../lib/family'
 import { formatCoords, userHome } from '../../lib/geo'
+import { PAGE_ENTER } from '../../lib/motion'
 import { loadAlertsSeen } from '../../lib/trips'
 import { useAlertsFeed } from '../../hooks/useTripsAlerts'
 import { Logo } from '../public/Logo'
-
-const PAGE_ENTER = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: 'easeOut' },
-}
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -132,7 +127,7 @@ function UserMenu({ name, onLogout }) {
 
 /**
  * Logged-in app shell (light theme): sidebar on desktop (>= 1024 px), compact topbar +
- * bottom tab bar on mobile. Trips and Alerts are shown disabled with "Soon" (no backend yet).
+ * bottom tab bar on mobile. Trips and Alerts fall back to Preview mode until their API exists.
  */
 export function AppLayout() {
   const { user, logout } = useAuth()
@@ -158,21 +153,10 @@ export function AppLayout() {
               const Icon = item.icon
               return (
                 <li key={item.label}>
-                  {item.soon ? (
-                    <span
-                      aria-disabled="true"
-                      className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-control px-3 text-sm font-semibold text-muted opacity-70"
-                    >
-                      <Icon aria-hidden="true" size={18} />
-                      {item.label}
-                      <span className="ml-auto rounded-pill bg-brand-soft px-2 py-0.5 text-[0.7rem] text-brand-hover">Soon</span>
-                    </span>
-                  ) : (
-                    <NavLink to={item.to} className={sideClass}>
-                      <Icon aria-hidden="true" size={18} />
-                      {item.label}
-                    </NavLink>
-                  )}
+                  <NavLink to={item.to} className={sideClass}>
+                    <Icon aria-hidden="true" size={18} />
+                    {item.label}
+                  </NavLink>
                 </li>
               )
             })}
@@ -184,7 +168,7 @@ export function AppLayout() {
       </aside>
 
       {/* ---- Topbar ---- */}
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="flex h-16 items-center justify-between gap-3 px-gutter sm:px-6">
           <Logo to="/dashboard" className="shrink-0 text-lg lg:hidden [&>span]:hidden sm:[&>span]:inline" />
           <div className="flex min-w-0 items-center gap-2">
@@ -194,7 +178,7 @@ export function AppLayout() {
                 <span className="hidden font-semibold sm:inline">Home: </span>
                 <span className="tabular-nums">{home ? formatCoords(home) : 'Not set'}</span>
               </span>
-              <Link to="/settings#home-area" className="shrink-0 font-semibold text-accent underline-offset-4 hover:underline">
+              <Link to="/settings#home-area" className="-my-3 inline-flex min-h-11 shrink-0 items-center font-semibold text-accent underline-offset-4 hover:underline">
                 Change<span className="sr-only"> home area</span>
               </Link>
             </div>
@@ -210,14 +194,14 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main id="main" tabIndex={-1} className="px-gutter pt-6 pb-28 focus:outline-none sm:px-6 lg:pb-12">
+      <main id="main" tabIndex={-1} className="px-gutter pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] focus:outline-none sm:px-6 lg:pb-12">
         <motion.div key={location.pathname} className="mx-auto w-full max-w-6xl" {...pageEnter}>
           <Outlet />
         </motion.div>
       </main>
 
       {/* ---- Mobile bottom tab bar ---- */}
-      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur lg:hidden">
+      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <ul className="grid grid-cols-5">
           {TABS.map((item) => {
             const Icon = item.icon

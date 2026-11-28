@@ -4,14 +4,14 @@ import { TravelPreview } from '../../components/features/TravelPreview'
 import { CtaBand } from '../../components/public/CtaBand'
 import { PageHeader } from '../../components/public/PageHeader'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle'
+import { PAGE_DESCRIPTIONS } from '../../lib/seo'
 
 /** /features (F2.2). Lazy-loaded route; uses Motion only (no GSAP/Lottie). */
 export function FeaturesPage() {
-  useDocumentTitle('Features')
+  useDocumentTitle('Features', PAGE_DESCRIPTIONS.features)
   return (
     <>
       <PageHeader
-        pill="Features"
         title="Everything your family needs to breathe easier."
         subtitle="Personal, preventive and explained – not just another AQI number."
       />

@@ -1,0 +1,9 @@
+User-agent: *
+# The signed-in app is private and behind login; only the public site is for search engines.
+Disallow: /dashboard
+Disallow: /family
+Disallow: /map
+Disallow: /trips
+Disallow: /alerts
+Disallow: /settings
+Disallow: /onboarding

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,7 +9,6 @@ import { Button } from '../components/ui/Button'
 import { Checkbox } from '../components/ui/Checkbox'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
-import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useToast } from '../hooks/useToast'
 import { LIMITS, registerSchema } from '../lib/validation'
 import { applyServerErrors } from '../lib/formErrors'
@@ -17,8 +16,11 @@ import { ErrorCode } from '../services/api'
 
 const FIELDS = ['name', 'email', 'password', 'consent']
 
-export function RegisterPage() {
-  useDocumentTitle('Create account')
+/**
+ * Back side of the auth card (/register). Rendered by AuthFlipPage together with the Login
+ * side; `active` is false while this side is turned away (its errors are then cleared).
+ */
+export function RegisterPage({ active = true, titleRef }) {
   const { register: createAccount } = useAuth()
   const { toast } = useToast()
   const [params] = useSearchParams()
@@ -28,11 +30,22 @@ export function RegisterPage() {
     register,
     handleSubmit,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', consent: false },
   })
+
+  // Turning to the other side clears this side's messages (React: adjust state during render).
+  const [wasActive, setWasActive] = useState(active)
+  if (active !== wasActive) {
+    setWasActive(active)
+    if (!active) setFormError(null)
+  }
+  useEffect(() => {
+    if (!active) clearErrors()
+  }, [active, clearErrors])
 
   async function onSubmit(values) {
     setFormError(null)
@@ -58,6 +71,8 @@ export function RegisterPage() {
 
   return (
     <AuthCard
+      variant="register"
+      titleRef={titleRef}
       title="Create your account"
       subtitle="Personalised climate-health awareness for you and your family."
       footer={
