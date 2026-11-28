@@ -336,6 +336,37 @@ class CachedEnvironmentService:
             elevation_cell=_grid_cell(cells[ELEVATION_PROVIDER]),
         )
 
+    async def get_elevations(self, points: Sequence[tuple[float, float]]) -> list[float | None]:
+        """Elevation (m) for several points via the cached elevation provider (Travel Mode).
+
+        Same cache/live/stale flow as get_snapshot, on the fine elevation grid: ONE cache
+        read and at most ONE write for all points. A point whose elevation cannot be
+        obtained gets None; this never raises for provider or cache failures.
+        """
+        if not points:
+            return []
+        now = self._clock()
+        cells = [to_cell(lat, lon, self.policy.elevation_grid_degrees) for lat, lon in points]
+        keys = [cache_key(CACHE_KEYS[ELEVATION_PROVIDER], cell) for cell in cells]
+        unique = dict.fromkeys(keys)  # same cell -> one lookup
+        try:
+            entries = await self.store.get_many(list(unique))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Cache read failed: %s", type(exc).__name__)
+            entries = {}
+        cell_by_key = dict(zip(keys, cells, strict=True))
+        outcomes = await asyncio.gather(
+            *(self._resolve(ELEVATION_PROVIDER, cell_by_key[k], now, entries.get(k)) for k in unique)
+        )
+        by_key = dict(zip(unique, outcomes, strict=True))
+        to_store = [(k, o.to_store) for k, o in by_key.items() if o.to_store is not None]
+        if to_store:
+            try:
+                await self.store.put_many(to_store)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Cache write failed: %s", type(exc).__name__)
+        return [by_key[k].value for k in keys]
+
     async def cleanup(self) -> int:
         """Delete cache rows that can no longer be served. Returns the number deleted."""
         return await self.store.cleanup(self._clock(), self.policy.max_stale)
