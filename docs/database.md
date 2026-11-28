@@ -35,8 +35,40 @@ no user data) is described in [caching.md](caching.md).
 | `revoked_at` | timestamptz | NULL while usable |
 | `created_at` | timestamptz | `now()` |
 
-RLS enabled (no policies). `DELETE /me` removes the user; members, routines and
-refresh tokens cascade in PostgreSQL.
+RLS enabled (no policies). `DELETE /me` removes the user; members, routines,
+refresh tokens and trips cascade in PostgreSQL.
+
+### Trips (Travel Mode, see [travel.md](travel.md))
+
+```
+users 1 ──── * trips 1 ──── * trip_stops        trips * ──── * family_members
+      CASCADE          CASCADE                        (trip_members, CASCADE both sides)
+```
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `trips` | `id` | UUID PK | |
+| | `user_id` | UUID FK → users.id | indexed, `ON DELETE CASCADE` |
+| | `name` | varchar(100) | |
+| | `trip_type` | varchar(16) | CHECK in `work`, `holiday`, `trek`, `pilgrimage`, `beach` |
+| | `start_date`, `end_date` | date | CHECK `end_date >= start_date` |
+| | `created_at`, `updated_at` | timestamptz | `now()`; `updated_at` trigger |
+| `trip_stops` | `id` | UUID PK | |
+| | `trip_id` | UUID FK → trips.id | `ON DELETE CASCADE`; indexed by the UNIQUE below |
+| | `position` | integer | 1, 2, 3 … (travel order); CHECK `>= 1`; **UNIQUE (trip_id, position)** |
+| | `place` | varchar(120) | |
+| | `lat`, `lon` | numeric(5,2), numeric(6,2) | rounded to 2 decimals; CHECK −90…90 / −180…180 |
+| | `elevation_m` | double precision, nullable | from the cached elevation provider; NULL if unavailable |
+| | `arrive_date`, `leave_date` | date | CHECK `leave_date >= arrive_date` |
+| | `created_at`, `updated_at` | timestamptz | `now()`; `updated_at` trigger |
+| `trip_members` | `trip_id` | UUID FK → trips.id | `ON DELETE CASCADE` |
+| | `member_id` | UUID FK → family_members.id | `ON DELETE CASCADE`; indexed |
+| | | | **PRIMARY KEY (trip_id, member_id)** (also the index for `trip_id`) |
+
+RLS enabled on all three (no policies). Deleting a family member removes them from
+their trips; deleting a user deletes their trips. Rules that span rows (stop dates
+inside the trip, stops in order, member ownership, limits) are enforced in the API
+(app/services/trips.py), the CHECKs above are the single-row safety net.
 
 - **Deleting a user deletes their family members and their routines** (PostgreSQL
   `ON DELETE CASCADE`; the ORM uses `passive_deletes=True` so PostgreSQL does it).
