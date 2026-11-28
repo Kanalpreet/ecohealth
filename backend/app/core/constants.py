@@ -40,3 +40,13 @@ TIMEZONE_MAX_LENGTH = 64
 # ---- Routines ----
 Weekday = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 WEEKDAYS: tuple[str, ...] = get_args(Weekday)
+
+# ---- Trips (Travel Mode, docs/travel.md) ----
+TripType = Literal["work", "holiday", "trek", "pilgrimage", "beach"]
+TRIP_TYPES: tuple[str, ...] = get_args(TripType)
+TRIP_TYPE_MAX_LENGTH = 16
+PLACE_MAX_LENGTH = 120
+MAX_TRIPS_PER_USER = 20
+MAX_STOPS_PER_TRIP = 10
+MAX_TRIP_DAYS = 60  # inclusive: start_date..end_date
+MAX_TRAVELLERS_PER_TRIP = 10  # = max family members per user

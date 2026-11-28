@@ -17,6 +17,7 @@ from app.api.health import router as health_router
 from app.api.me import router as me_router
 from app.api.members import router as members_router
 from app.api.risk import router as risk_router
+from app.api.trips import router as trips_router
 from app.core.config import ConfigurationError, get_settings
 from app.core.errors import install_error_handling
 from app.core.logging import configure_logging
@@ -61,3 +62,4 @@ app.include_router(auth_router)
 app.include_router(me_router)
 app.include_router(members_router)
 app.include_router(risk_router)
+app.include_router(trips_router)
