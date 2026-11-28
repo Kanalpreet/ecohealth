@@ -7,12 +7,11 @@ climate-health awareness for a user and their family.
 - `backend/`: FastAPI, SQLAlchemy, Alembic and Supabase PostgreSQL. The risk engine is
   deterministic Python.
 - `frontend/`: Vite and React (plain JavaScript) with Tailwind.
-- `docs/`: design and API documents. Start with [design.md](design.md) and
-  [CLAUDE.md](CLAUDE.md).
+- `docs/`: design and API documents. Start with [design.md](design.md) 
 
 ## Run the backend
 
-See [CLAUDE.md](CLAUDE.md) ("Run on Windows") and [docs/database.md](docs/database.md).
+
 In short, from `backend/`:
 
 ```powershell
@@ -36,6 +35,4 @@ npm run test:e2e     # end-to-end + accessibility test (first time: npx playwrig
 No frontend environment file is needed. To use another backend while developing, copy
 `frontend/.env.example` to `frontend/.env.local` and change `DEV_API_TARGET`.
 
-- Frontend design and rules: [docs/frontend.md](docs/frontend.md) and
-  [frontend/CLAUDE.md](frontend/CLAUDE.md).
-- Deploying to Vercel: [docs/frontend.md §11](docs/frontend.md).
+- 
